@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
     AudioWaveform,
-    // BarChart2,
+    BarChart2,
     FileText,
     GalleryVerticalEnd,
     HomeIcon,
@@ -24,9 +24,24 @@ import {
     SidebarFooter,
     SidebarHeader,
     SidebarRail,
+    useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "./ui/button"
-import Link from "next/link"
+
+// Component for Home button that acts as sidebar trigger
+function HomeButton() {
+    const { toggleSidebar } = useSidebar()
+
+    return (
+        <Button
+            variant="ghost"
+            className="flex items-center gap-2"
+            onClick={toggleSidebar}
+        >
+            <HomeIcon className="w-4 h-4" />
+        </Button>
+    )
+}
 
 // Sample data for sidebar
 const data = {
@@ -48,12 +63,12 @@ const data = {
         },
     ],
     navMain: [
-        // {
-        //     title: "Tổng quan",
-        //     url: "/dashboard",
-        //     icon: BarChart2,
-        //     isActive: true,
-        // },
+        {
+            title: "Tổng quan",
+            url: "/dashboard",
+            icon: BarChart2,
+            isActive: true,
+        },
         {
             title: "Đơn hàng",
             url: "/orders",
@@ -170,11 +185,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <Sidebar collapsible="icon" {...props}>
             <SidebarHeader>
                 {/* <TeamSwitcher teams={data.teams} /> */}
-                <Button variant="ghost" className="flex items-center gap-2" asChild>
-                    <Link href="/">
-                        <HomeIcon className="w-4 h-4" />
-                    </Link>
-                </Button>
+                <HomeButton />
             </SidebarHeader>
             <SidebarContent>
                 <NavMain items={data.navMain} />
