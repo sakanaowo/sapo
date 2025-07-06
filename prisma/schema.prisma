@@ -1,12 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  // output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -14,268 +8,254 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Model Product: Lưu thông tin sản phẩm
 model Product {
-  productId   BigInt           @id @default(autoincrement()) // Mã sản phẩm, tự động tăng
-  name        String // Tên sản phẩm (ví dụ: Hạt nêm Knorr thịt thăn 400g)
-  description String? // Mô tả sản phẩm (description: mô tả chi tiết)
-  brand       String? // Nhãn hiệu (brand: thương hiệu)
-  productType String? // Loại sản phẩm (product_type: phân loại sản phẩm, ánh xạ "Hình thức quản lý sản phẩm")
-  tags        String? // Thẻ (tags: từ khóa liên quan)
-  createdAt   DateTime         @default(now()) // Ngày tạo
-  variants    ProductVariant[] // Quan hệ 1-n với ProductVariant
+  productId   BigInt           @id @default(autoincrement())
+  name        String
+  description String?
+  brand       String?
+  productType String?
+  tags        String?
+  createdAt   DateTime         @default(now())
+  variants    ProductVariant[]
 
-  @@index([name]) // Chỉ mục để tìm kiếm theo tên sản phẩm
-  @@map("product") // Ánh xạ tên bảng trong PostgreSQL
+  @@index([name])
+  @@map("product")
 }
 
-// Model ProductVariant: Lưu thông tin phiên bản sản phẩm
 model ProductVariant {
-  variantId            BigInt                @id @default(autoincrement()) // Mã phiên bản, tự động tăng
-  productId            BigInt // Mã sản phẩm, khóa ngoại
-  sku                  String                @unique // Mã SKU (Stock Keeping Unit: mã định danh sản phẩm)
-  barcode              String? // Mã vạch (barcode: mã nhận diện sản phẩm)
-  variantName          String // Tên phiên bản (ví dụ: Tú tráng nhựa - hộp)
-  weight               Float                 @default(0) // Khối lượng (weight: trọng lượng sản phẩm)
-  weightUnit           String                @default("g") // Đơn vị khối lượng (thường là gram)
-  unit                 String // Đơn vị tính (unit: gói, chai, lốc, thùng, ...)
-  imageUrl             String? // URL ảnh đại diện (image_url: liên kết ảnh)
-  retailPrice          Float                 @default(0) // Giá bán lẻ (retail_price: giá bán cho khách lẻ)
-  wholesalePrice       Float                 @default(0) // Giá bán buôn (wholesale_price: giá bán số lượng lớn)
-  importPrice          Float                 @default(0) // Giá nhập (import_price: giá nhập từ nhà cung cấp)
-  taxApplied           Boolean               @default(false) // Áp dụng thuế (tax_applied: có tính thuế hay không)
-  inputTax             Float                 @default(0) // Thuế đầu vào (input_tax: % thuế nhập hàng)
-  outputTax            Float                 @default(0) // Thuế đầu ra (output_tax: % thuế bán hàng)
-  createdAt            DateTime              @default(now()) // Ngày tạo
-  product              Product               @relation(fields: [productId], references: [productId], onDelete: Cascade) // Quan hệ với Product
-  inventory            Inventory? // Quan hệ 1-1 với Inventory
-  warranty             Warranty? // Quan hệ 1-1 với Warranty
-  orderDetails         OrderDetail[] // Quan hệ n-n với OrderDetail
-  purchaseOrderDetails PurchaseOrderDetail[] // Quan hệ n-n với PurchaseOrderDetail
-  fromConversions      UnitConversion[]      @relation("fromVariant") // Quan hệ với UnitConversion (nguồn)
-  toConversions        UnitConversion[]      @relation("toVariant") // Quan hệ với UnitConversion (đích)
+  variantId            BigInt                @id @default(autoincrement())
+  productId            BigInt
+  sku                  String                @unique
+  barcode              String?
+  variantName          String
+  weight               Float                 @default(0)
+  weightUnit           String                @default("g")
+  unit                 String
+  imageUrl             String?
+  retailPrice          Float                 @default(0)
+  wholesalePrice       Float                 @default(0)
+  importPrice          Float                 @default(0)
+  taxApplied           Boolean               @default(false)
+  inputTax             Float                 @default(0)
+  outputTax            Float                 @default(0)
+  createdAt            DateTime              @default(now())
+  inventory            Inventory?
+  orderDetails         OrderDetail[]
+  product              Product               @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  purchaseOrderDetails PurchaseOrderDetail[]
   ReportInventory      ReportInventory[]
+  fromConversions      UnitConversion[]      @relation("fromVariant")
+  toConversions        UnitConversion[]      @relation("toVariant")
+  warranty             Warranty?
 
-  @@index([sku]) // Chỉ mục cho mã SKU
-  @@index([barcode]) // Chỉ mục cho mã vạch
-  @@index([productId]) // Chỉ mục cho khóa ngoại
-  @@map("product_variant") // Ánh xạ tên bảng
+  @@index([sku])
+  @@index([barcode])
+  @@index([productId])
+  @@index([variantName])
+  @@map("product_variant")
 }
 
-// Model Inventory: Lưu thông tin tồn kho
 model Inventory {
-  inventoryId       BigInt         @id @default(autoincrement()) // Mã tồn kho, tự động tăng
-  variantId         BigInt         @unique // Mã phiên bản, khóa ngoại
-  initialStock      Float          @default(0) // Tồn kho ban đầu (initial_stock: số lượng ban đầu)
-  currentStock      Float          @default(0) // Tồn kho hiện tại (current_stock: số lượng hiện có)
-  minStock          Float          @default(0) // Tồn kho tối thiểu (min_stock: ngưỡng tối thiểu)
-  maxStock          Float          @default(0) // Tồn kho tối đa (max_stock: ngưỡng tối đa)
-  warehouseLocation String? // Điểm lưu kho (warehouse_location: vị trí kho)
-  updatedAt         DateTime       @default(now()) @updatedAt // Ngày cập nhật
-  variant           ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant
+  inventoryId       BigInt         @id @default(autoincrement())
+  variantId         BigInt         @unique
+  initialStock      Float          @default(0)
+  currentStock      Float          @default(0)
+  minStock          Float          @default(0)
+  maxStock          Float          @default(0)
+  warehouseLocation String?
+  updatedAt         DateTime       @default(now()) @updatedAt
+  variant           ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade)
 
-  @@index([variantId]) // Chỉ mục cho mã phiên bản
-  @@map("inventory") // Ánh xạ tên bảng
+  @@index([variantId])
+  @@map("inventory")
 }
 
-// Model UnitConversion: Lưu tỷ lệ quy đổi đơn vị
 model UnitConversion {
-  conversionId   BigInt         @id @default(autoincrement()) // Mã quy đổi, tự động tăng
-  fromVariantId  BigInt // Mã phiên bản nguồn, khóa ngoại
-  toVariantId    BigInt // Mã phiên bản đích, khóa ngoại
-  conversionRate Float // Tỷ lệ quy đổi (conversion_rate: số lượng đơn vị nguồn tương ứng với 1 đơn vị đích)
-  createdAt      DateTime       @default(now()) // Ngày tạo
-  fromVariant    ProductVariant @relation("fromVariant", fields: [fromVariantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant (nguồn)
-  toVariant      ProductVariant @relation("toVariant", fields: [toVariantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant (đích)
+  conversionId   BigInt         @id @default(autoincrement())
+  fromVariantId  BigInt
+  toVariantId    BigInt
+  conversionRate Float
+  createdAt      DateTime       @default(now())
+  fromVariant    ProductVariant @relation("fromVariant", fields: [fromVariantId], references: [variantId], onDelete: Cascade)
+  toVariant      ProductVariant @relation("toVariant", fields: [toVariantId], references: [variantId], onDelete: Cascade)
 
-  @@unique([fromVariantId, toVariantId]) // Đảm bảo mỗi cặp phiên bản chỉ có 1 quy đổi
-  @@index([fromVariantId]) // Chỉ mục cho mã phiên bản nguồn
-  @@index([toVariantId]) // Chỉ mục cho mã phiên bản đích
-  @@map("unit_conversion") // Ánh xạ tên bảng
+  @@unique([fromVariantId, toVariantId])
+  @@index([fromVariantId])
+  @@index([toVariantId])
+  @@map("unit_conversion")
 }
 
-// Model Warranty: Lưu thông tin bảo hành
 model Warranty {
-  warrantyId            BigInt         @id @default(autoincrement()) // Mã bảo hành, tự động tăng
-  variantId             BigInt         @unique // Mã phiên bản, khóa ngoại
-  expirationWarningDays Int            @default(0) // Số ngày cảnh báo hết hạn (expiration_warning_days: ngày cảnh báo trước khi hết hạn)
-  warrantyPolicy        String? // Chính sách bảo hành (warranty_policy: mô tả bảo hành)
-  createdAt             DateTime       @default(now()) // Ngày tạo
-  variant               ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant
+  warrantyId            BigInt         @id @default(autoincrement())
+  variantId             BigInt         @unique
+  expirationWarningDays Int            @default(0)
+  warrantyPolicy        String?
+  createdAt             DateTime       @default(now())
+  variant               ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade)
 
-  @@index([variantId]) // Chỉ mục cho mã phiên bản
-  @@map("warranty") // Ánh xạ tên bảng
+  @@index([variantId])
+  @@map("warranty")
 }
 
-// Model CustomerGroup: Lưu thông tin nhóm khách hàng
 model CustomerGroup {
-  customerGroupId BigInt     @id @default(autoincrement()) // Mã nhóm khách, tự động tăng
-  groupCode       String     @unique // Mã nhóm (group_code: mã định danh nhóm)
-  name            String // Tên nhóm (ví dụ: vip, buôn, lẻ)
-  description     String? // Mô tả nhóm
-  customerCount   Int        @default(0) // Số lượng khách trong nhóm
-  createdAt       DateTime   @default(now()) // Ngày tạo
-  customers       Customer[] // Quan hệ 1-n với Customer
+  customerGroupId BigInt     @id @default(autoincrement())
+  groupCode       String     @unique
+  name            String
+  description     String?
+  customerCount   Int        @default(0)
+  createdAt       DateTime   @default(now())
+  customers       Customer[]
 
-  @@index([groupCode]) // Chỉ mục cho mã nhóm
-  @@map("customer_group") // Ánh xạ tên bảng
+  @@index([groupCode])
+  @@map("customer_group")
 }
 
-// Model Customer: Lưu thông tin khách hàng
 model Customer {
-  customerId       BigInt         @id @default(autoincrement()) // Mã khách hàng, tự động tăng
-  customerCode     String         @unique // Mã khách (customer_code: mã định danh khách)
-  name             String // Tên khách hàng
-  phone            String? // Số điện thoại
-  email            String? // Email
-  address          String? // Địa chỉ
-  customerGroupId  BigInt? // Mã nhóm khách, khóa ngoại
-  debt             Float          @default(0) // Công nợ (debt: số tiền khách còn nợ)
-  totalSpent       Float          @default(0) // Tổng chi tiêu (total_spent: tổng tiền đã mua)
-  totalOrders      Int            @default(0) // Tổng số đơn (total_orders: số lượng đơn hàng)
-  birthDate        DateTime? // Ngày sinh
-  gender           String? // Giới tính
-  taxCode          String? // Mã thuế (tax_code: mã số thuế)
-  description      String? // Mô tả khách hàng
-  lastPurchaseDate DateTime? // Ngày mua cuối (last_purchase_date: ngày đặt đơn gần nhất)
-  totalItemsBought Float          @default(0) // Tổng số lượng sản phẩm đã mua
-  createdAt        DateTime       @default(now()) // Ngày tạo
-  customerGroup    CustomerGroup? @relation(fields: [customerGroupId], references: [customerGroupId], onDelete: SetNull) // Quan hệ với CustomerGroup
-  orders           Order[] // Quan hệ 1-n với Order
+  customerId       BigInt         @id @default(autoincrement())
+  customerCode     String         @unique
+  name             String
+  phone            String?
+  email            String?
+  address          String?
+  customerGroupId  BigInt?
+  debt             Float          @default(0)
+  totalSpent       Float          @default(0)
+  totalOrders      Int            @default(0)
+  birthDate        DateTime?
+  gender           String?
+  taxCode          String?
+  description      String?
+  lastPurchaseDate DateTime?
+  totalItemsBought Float          @default(0)
+  createdAt        DateTime       @default(now())
+  customerGroup    CustomerGroup? @relation(fields: [customerGroupId], references: [customerGroupId])
+  orders           Order[]
 
-  @@index([customerCode]) // Chỉ mục cho mã khách
-  @@index([customerGroupId]) // Chỉ mục cho khóa ngoại
-  @@map("customer") // Ánh xạ tên bảng
+  @@index([customerCode])
+  @@index([customerGroupId])
+  @@map("customer")
 }
 
-// Model Order: Lưu thông tin đơn hàng
 model Order {
-  orderId       BigInt        @id @default(autoincrement()) // Mã đơn hàng, tự động tăng
-  orderCode     String        @unique // Mã đơn hàng (order_code: mã định danh đơn)
-  customerId    BigInt? // Mã khách hàng, khóa ngoại
-  createdAt     DateTime      @default(now()) // Ngày tạo
-  status        String? // Trạng thái đơn (status: mới, hủy, ...)
-  paymentStatus String? // Trạng thái thanh toán (payment_status: đã thanh toán, chưa thanh toán, ...)
-  totalAmount   Float         @default(0) // Tổng tiền (total_amount: tổng giá trị đơn)
-  note          String? // Ghi chú đơn
-  customer      Customer?     @relation(fields: [customerId], references: [customerId], onDelete: SetNull) // Quan hệ với Customer
-  orderDetails  OrderDetail[] // Quan hệ 1-n với OrderDetail
+  orderId       BigInt        @id @default(autoincrement())
+  orderCode     String        @unique
+  customerId    BigInt?
+  createdAt     DateTime      @default(now())
+  status        String?
+  paymentStatus String?
+  totalAmount   Float         @default(0)
+  note          String?
+  customer      Customer?     @relation(fields: [customerId], references: [customerId])
+  orderDetails  OrderDetail[]
 
-  @@index([orderCode]) // Chỉ mục cho mã đơn hàng
-  @@index([customerId]) // Chỉ mục cho khóa ngoại
-  @@map("order") // Ánh xạ tên bảng
+  @@index([orderCode])
+  @@index([customerId])
+  @@map("order")
 }
 
-// Model OrderDetail: Lưu chi tiết đơn hàng
 model OrderDetail {
-  orderDetailId BigInt         @id @default(autoincrement()) // Mã chi tiết đơn, tự động tăng
-  orderId       BigInt // Mã đơn hàng, khóa ngoại
-  variantId     BigInt // Mã phiên bản, khóa ngoại
-  quantity      Float // Số lượng
-  unitPrice     Float // Đơn giá (unit_price: giá mỗi đơn vị)
-  discount      Float          @default(0) // Chiết khấu (discount: giảm giá)
-  totalAmount   Float // Thành tiền (total_amount: số tiền sau chiết khấu)
-  order         Order          @relation(fields: [orderId], references: [orderId], onDelete: Cascade) // Quan hệ với Order
-  variant       ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant
+  orderDetailId BigInt         @id @default(autoincrement())
+  orderId       BigInt
+  variantId     BigInt
+  quantity      Float
+  unitPrice     Float
+  discount      Float          @default(0)
+  totalAmount   Float
+  order         Order          @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  variant       ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade)
 
-  @@index([orderId]) // Chỉ mục cho khóa ngoại
-  @@index([variantId]) // Chỉ mục cho khóa ngoại
-  @@map("order_detail") // Ánh xạ tên bảng
+  @@index([orderId])
+  @@index([variantId])
+  @@map("order_detail")
 }
 
-// Model Supplier: Lưu thông tin nhà cung cấp
 model Supplier {
-  supplierId     BigInt          @id @default(autoincrement()) // Mã nhà cung cấp, tự động tăng
-  supplierCode   String          @unique // Mã nhà cung cấp (supplier_code: mã định danh)
-  name           String // Tên nhà cung cấp
-  email          String? // Email
-  phone          String? // Số điện thoại
-  address        String? // Địa chỉ
-  taxCode        String? // Mã thuế (tax_code: mã số thuế)
-  website        String? // Website
-  status         String? // Trạng thái (status: đang giao dịch, ...)
-  createdAt      DateTime        @default(now()) // Ngày tạo
-  purchaseOrders PurchaseOrder[] // Quan hệ 1-n với PurchaseOrder
+  supplierId     BigInt          @id @default(autoincrement())
+  supplierCode   String          @unique
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  taxCode        String?
+  website        String?
+  status         String?
+  createdAt      DateTime        @default(now())
+  purchaseOrders PurchaseOrder[]
 
-  @@index([supplierCode]) // Chỉ mục cho mã nhà cung cấp
-  @@map("supplier") // Ánh xạ tên bảng
+  @@index([supplierCode])
+  @@map("supplier")
 }
 
-// Model PurchaseOrder: Lưu thông tin đơn đặt hàng nhập
 model PurchaseOrder {
-  purchaseOrderId      BigInt                @id @default(autoincrement()) // Mã đơn nhập, tự động tăng
-  purchaseOrderCode    String                @unique // Mã đơn nhập (purchase_order_code: mã định danh)
-  supplierId           BigInt // Mã nhà cung cấp, khóa ngoại
-  createdBy            BigInt? // Người tạo đơn (created_by: ID người dùng)
-  createdAt            DateTime              @default(now()) // Ngày tạo
-  importDate           DateTime? // Ngày nhập (import_date: ngày nhập hàng)
-  status               String? // Trạng thái đơn (status: mới, hoàn thành, ...)
-  importStatus         String? // Trạng thái nhập (import_status: đã nhập, đang nhập, ...)
-  supplier             Supplier              @relation(fields: [supplierId], references: [supplierId], onDelete: Restrict) // Quan hệ với Supplier
-  purchaseOrderDetails PurchaseOrderDetail[] // Quan hệ 1-n với PurchaseOrderDetail
+  purchaseOrderId      BigInt                @id @default(autoincrement())
+  purchaseOrderCode    String                @unique
+  supplierId           BigInt
+  createdBy            BigInt?
+  createdAt            DateTime              @default(now())
+  importDate           DateTime?
+  status               String?
+  importStatus         String?
+  supplier             Supplier              @relation(fields: [supplierId], references: [supplierId])
+  purchaseOrderDetails PurchaseOrderDetail[]
 
-  @@index([purchaseOrderCode]) // Chỉ mục cho mã đơn nhập
-  @@index([supplierId]) // Chỉ mục cho khóa ngoại
-  @@map("purchase_order") // Ánh xạ tên bảng
+  @@index([purchaseOrderCode])
+  @@index([supplierId])
+  @@map("purchase_order")
 }
 
-// Model PurchaseOrderDetail: Lưu chi tiết đơn nhập
 model PurchaseOrderDetail {
-  purchaseOrderDetailId BigInt         @id @default(autoincrement()) // Mã chi tiết đơn nhập, tự động tăng
-  purchaseOrderId       BigInt // Mã đơn nhập, khóa ngoại
-  variantId             BigInt // Mã phiên bản, khóa ngoại
-  quantity              Float // Số lượng
-  unitPrice             Float // Đơn giá (unit_price: giá mỗi đơn vị)
-  discount              Float          @default(0) // Chiết khấu (discount: giảm giá)
-  totalAmount           Float // Thành tiền (total_amount: số tiền sau chiết khấu)
-  purchaseOrder         PurchaseOrder  @relation(fields: [purchaseOrderId], references: [purchaseOrderId], onDelete: Cascade) // Quan hệ với PurchaseOrder
-  variant               ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant
+  purchaseOrderDetailId BigInt         @id @default(autoincrement())
+  purchaseOrderId       BigInt
+  variantId             BigInt
+  quantity              Float
+  unitPrice             Float
+  discount              Float          @default(0)
+  totalAmount           Float
+  purchaseOrder         PurchaseOrder  @relation(fields: [purchaseOrderId], references: [purchaseOrderId], onDelete: Cascade)
+  variant               ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade)
 
-  @@index([purchaseOrderId]) // Chỉ mục cho khóa ngoại
-  @@index([variantId]) // Chỉ mục cho khóa ngoại
-  @@map("purchase_order_detail") // Ánh xạ tên bảng
+  @@index([purchaseOrderId])
+  @@index([variantId])
+  @@map("purchase_order_detail")
 }
 
-// Model ReportSales: Lưu báo cáo bán hàng
 model ReportSales {
-  reportId     BigInt   @id @default(autoincrement()) // Mã báo cáo, tự động tăng
-  reportDate   DateTime // Ngày báo cáo
-  periodType   String // Loại kỳ (period_type: ngày, tuần, tháng, năm)
-  totalRevenue Float    @default(0) // Tổng doanh thu (total_revenue: tổng tiền bán hàng)
-  totalOrders  Int      @default(0) // Tổng số đơn
-  createdAt    DateTime @default(now()) // Ngày tạo
+  reportId     BigInt   @id @default(autoincrement())
+  reportDate   DateTime
+  periodType   String
+  totalRevenue Float    @default(0)
+  totalOrders  Int      @default(0)
+  createdAt    DateTime @default(now())
 
-  @@index([reportDate, periodType]) // Chỉ mục cho tìm kiếm theo ngày và kỳ
-  @@map("report_sales") // Ánh xạ tên bảng
+  @@index([reportDate, periodType])
+  @@map("report_sales")
 }
 
-// Model ReportInventory: Lưu báo cáo kho
 model ReportInventory {
-  reportInventoryId BigInt         @id @default(autoincrement()) // Mã báo cáo kho, tự động tăng
-  variantId         BigInt // Mã phiên bản, khóa ngoại
-  reportDate        DateTime // Ngày báo cáo
-  unit              String // Đơn vị tính
-  productType       String? // Loại sản phẩm
-  sku               String // Mã SKU
-  currentStock      Float          @default(0) // Tồn kho hiện tại
-  inventoryValue    Float          @default(0) // Giá trị tồn kho (inventory_value: giá trị tiền của tồn kho)
-  createdAt         DateTime       @default(now()) // Ngày tạo
-  variant           ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade) // Quan hệ với ProductVariant
+  reportInventoryId BigInt         @id @default(autoincrement())
+  variantId         BigInt
+  reportDate        DateTime
+  unit              String
+  productType       String?        @default("Normal")
+  sku               String
+  currentStock      Float          @default(0)
+  inventoryValue    Float          @default(0)
+  createdAt         DateTime       @default(now())
+  variant           ProductVariant @relation(fields: [variantId], references: [variantId], onDelete: Cascade)
 
-  @@index([reportDate]) // Chỉ mục cho ngày báo cáo
-  @@index([variantId]) // Chỉ mục cho khóa ngoại
-  @@map("report_inventory") // Ánh xạ tên bảng
+  @@index([reportDate])
+  @@index([variantId])
+  @@map("report_inventory")
 }
 
-// Model ReportFinance: Lưu báo cáo tài chính
 model ReportFinance {
-  reportFinanceId BigInt   @id @default(autoincrement()) // Mã báo cáo tài chính, tự động tăng
-  reportDate      DateTime // Ngày báo cáo
-  reportType      String // Loại báo cáo (report_type: lãi lỗ, công nợ khách, công nợ nhà cung cấp, sổ quỹ)
-  totalAmount     Float    @default(0) // Tổng số tiền (total_amount: giá trị báo cáo)
-  details         String? // Chi tiết báo cáo
-  createdAt       DateTime @default(now()) // Ngày tạo
+  reportFinanceId BigInt   @id @default(autoincrement())
+  reportDate      DateTime
+  reportType      String
+  totalAmount     Float    @default(0)
+  details         String?
+  createdAt       DateTime @default(now())
 
-  @@index([reportDate, reportType]) // Chỉ mục cho ngày và loại báo cáo
-  @@map("report_finance") // Ánh xạ tên bảng
+  @@index([reportDate, reportType])
+  @@map("report_finance")
 }

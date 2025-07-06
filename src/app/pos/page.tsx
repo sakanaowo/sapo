@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Search, Plus, X } from "lucide-react";
 
 export default function POSPage() {
@@ -54,7 +54,9 @@ export default function POSPage() {
                                         >
                                             {order}
                                             {orders.length > 1 && (
-                                                <button
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         removeOrder(order);
@@ -62,7 +64,7 @@ export default function POSPage() {
                                                     className="ml-2 opacity-0 group-hover:opacity-100 hover:bg-destructive rounded-full p-0.5"
                                                 >
                                                     <X className="h-3 w-3" />
-                                                </button>
+                                                </Button>
                                             )}
                                         </TabsTrigger>
                                     ))}
@@ -90,11 +92,6 @@ export default function POSPage() {
                         {orders.map((order) => (
                             <TabsContent key={order} value={order} className="mt-0">
                                 <Card>
-                                    <CardHeader className="pb-3">
-                                        {/* <CardTitle className="text-lg font-semibold">
-                                            {order} - Danh sách sản phẩm
-                                        </CardTitle> */}
-                                    </CardHeader>
                                     <CardContent>
                                         <div className="text-center py-12 text-muted-foreground">
                                             <div className="text-4xl mb-4">🛒</div>
