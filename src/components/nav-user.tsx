@@ -6,7 +6,6 @@ import {
     ChevronsUpDown,
     CreditCard,
     LogOut,
-    Sparkles,
 } from "lucide-react"
 
 import {
@@ -29,6 +28,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
+import { ModeToggle } from "./ModeToggle"
 
 export function NavUser({
     user,
@@ -82,8 +82,9 @@ export function NavUser({
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
                             <DropdownMenuItem>
-                                <Sparkles />
-                                Upgrade to Pro
+                                {/* <Sparkles /> */}
+                                <ModeToggle />
+                                Change Theme
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />

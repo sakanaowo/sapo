@@ -6,7 +6,6 @@ import {
     BarChart2,
     FileText,
     GalleryVerticalEnd,
-    HomeIcon,
     Package,
     Settings,
     ShoppingCart,
@@ -24,25 +23,9 @@ import {
     SidebarFooter,
     SidebarHeader,
     SidebarRail,
-    useSidebar,
     SidebarTrigger
 } from "@/components/ui/sidebar"
-import { Button } from "./ui/button"
 
-// Component for Home button that acts as sidebar trigger
-// function HomeButton() {
-//     const { toggleSidebar } = useSidebar()
-
-//     return (
-//         <Button
-//             variant="ghost"
-//             className="flex items-center gap-2"
-//             onClick={toggleSidebar}
-//         >
-//             <HomeIcon className="w-4 h-4" />
-//         </Button>
-//     )
-// }
 
 // Sample data for sidebar
 const data = {
