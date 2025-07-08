@@ -1,5 +1,5 @@
-import get50ProductVariants from '@/actions/product.action';
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import getAllProducts from '@/actions/product.action';
 
 // Helper function to recursively convert BigInt to string
 function convertBigIntToString(obj) {
@@ -25,12 +25,9 @@ function convertBigIntToString(obj) {
 }
 
 export async function GET(request) {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 50;
-
     try {
-        const products = await get50ProductVariants(page, limit);
+        // Get all products without pagination
+        const products = await getAllProducts();
 
         // Convert all BigInt to string before serialization
         const convertedProducts = convertBigIntToString(products);

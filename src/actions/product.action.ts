@@ -3,12 +3,8 @@
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
 
-export default async function get50ProductVariants(page: number, limit: number) {
-    if (page < 1 || limit < 1) {
-        throw new Error('Page and limit must be positive numbers');
-    }
-
-    const cacheKey = `products-variants-page-${page}-limit-${limit}`;
+export default async function getAllProducts() {
+    const cacheKey = `all-products-variants`;
 
     try {
         // Check cache first
@@ -17,10 +13,8 @@ export default async function get50ProductVariants(page: number, limit: number) 
             return JSON.parse(cached);
         }
 
-        // Fetch products with their variants and pricing
+        // Fetch all products with their variants and pricing
         const products = await prisma.product.findMany({
-            skip: (page - 1) * limit,
-            take: limit,
             include: {
                 variants: {
                     include: {
@@ -46,12 +40,12 @@ export default async function get50ProductVariants(page: number, limit: number) 
             typeof value === 'bigint' ? value.toString() : value
         ));
 
-        // Cache the serialized data
+        // Cache the serialized data for 1 hour
         await redis.setEx(cacheKey, 3600, JSON.stringify(serializedProducts));
 
         return serializedProducts;
     } catch (error) {
-        console.error('Error fetching products with variants:', error);
+        console.error('Error fetching all products with variants:', error);
         throw error;
     }
 }
