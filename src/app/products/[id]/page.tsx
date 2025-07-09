@@ -1,9 +1,11 @@
 import React from 'react'
 
-function ProductIdPage() {
+function ProductDetailPage() {
     return (
-        <div>ProductIdPage</div>
+        <div>ProductDetailPage
+
+        </div>
     )
 }
 
-export default ProductIdPage
+export default ProductDetailPage
