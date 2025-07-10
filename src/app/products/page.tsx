@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
-import ProductCard from "@/components/product-card";
+import ProductCard from "@/components/products/product-card";
 import { toast } from "sonner";
 
 interface Inventory {
@@ -120,7 +120,7 @@ function ProductsPage() {
     };
 
     // Handle search on Enter key
-    const handleKeyPress = (e) => {
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             handleSearch();
         }

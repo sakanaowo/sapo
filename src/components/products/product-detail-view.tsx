@@ -1,0 +1,136 @@
+'use client';
+
+import React, { useState } from 'react';
+import ProductDetailHeader from './product-detail-header';
+import ProductVariantList from './product-variant-list';
+import ProductVariantDetails from './product-variant-details';
+import { Card, CardContent } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+
+// Define types based on your prisma schema from product.action.ts
+type Variant = {
+    variantId: string;
+    variantName: string;
+    sku: string;
+    barcode: string | null;
+    weight: number;
+    weightUnit: string;
+    unit: string;
+    imageUrl: string | null;
+    retailPrice: number;
+    wholesalePrice: number;
+    importPrice: number;
+    taxApplied: boolean;
+    fromConversions: any[];
+    toConversions: any[];
+};
+
+type Product = {
+    productId: string;
+    name: string;
+    description: string | null;
+    brand: string | null;
+    productType: string | null;
+    tags: string[];
+    variants: Variant[];
+};
+
+interface ProductDetailViewProps {
+    product: Product;
+}
+
+const ProductDetailView: React.FC<ProductDetailViewProps> = ({ product }) => {
+    const [selectedVariant, setSelectedVariant] = useState<Variant>(product.variants[0]);
+
+    return (
+        <div className="flex flex-col gap-6 max-w-7xl mx-auto p-4 md:p-6">
+            <ProductDetailHeader product={product} />
+
+            <Card className="overflow-hidden border-none shadow-sm">
+                <CardContent className="p-6 md:p-8">
+                    {/* Product header section */}
+                    <div className="flex flex-col gap-2 mb-6">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl font-bold tracking-tight">{product.name}</h1>
+                            {product.brand && (
+                                <Badge variant="outline" className="ml-2">{product.brand}</Badge>
+                            )}
+                            {product.productType && (
+                                <Badge variant="secondary" className="ml-1">{product.productType}</Badge>
+                            )}
+                        </div>
+                        {product.description && (
+                            <p className="text-muted-foreground">{product.description}</p>
+                        )}
+                        {product.tags && product.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {product.tags.map((tag, index) => (
+                                    <Badge key={index} variant="outline" className="bg-primary/5">
+                                        {tag}
+                                    </Badge>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <Tabs defaultValue="variants" className="mt-6">
+                        <TabsList className="mb-6">
+                            <TabsTrigger value="variants">Phiên bản sản phẩm</TabsTrigger>
+                            <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="variants">
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <div className="md:col-span-1">
+                                    <ProductVariantList
+                                        variants={product.variants}
+                                        selectedVariantId={selectedVariant.variantId}
+                                        onSelectVariant={setSelectedVariant}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <ProductVariantDetails variant={selectedVariant} />
+                                </div>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="details">
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <Card>
+                                        <CardContent className="p-6">
+                                            <h3 className="text-lg font-semibold mb-4">Thông tin sản phẩm</h3>
+                                            <dl className="space-y-4">
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <dt className="font-medium text-muted-foreground">Mã sản phẩm</dt>
+                                                    <dd className="col-span-2">{product.productId}</dd>
+                                                </div>
+                                                {product.brand && (
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <dt className="font-medium text-muted-foreground">Thương hiệu</dt>
+                                                        <dd className="col-span-2">{product.brand}</dd>
+                                                    </div>
+                                                )}
+                                                {product.productType && (
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <dt className="font-medium text-muted-foreground">Loại sản phẩm</dt>
+                                                        <dd className="col-span-2">{product.productType}</dd>
+                                                    </div>
+                                                )}
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <dt className="font-medium text-muted-foreground">Số phiên bản</dt>
+                                                    <dd className="col-span-2">{product.variants.length}</dd>
+                                                </div>
+                                            </dl>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+export default ProductDetailView;

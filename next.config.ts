@@ -4,7 +4,10 @@ const nextConfig: NextConfig = {
   /* config options here */
   devIndicators: false,
   images: {
-    domains: ['images.unsplash.com', 'sapo.dktcdn.net'],
+    remotePatterns: [{
+      protocol: 'https',
+      hostname: '**',
+    }],
   },
 };
 

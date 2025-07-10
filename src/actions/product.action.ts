@@ -3,53 +3,6 @@
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
 
-// export default async function getAllProducts() {
-//     const cacheKey = `all-products-variants`;
-
-//     try {
-//         // Check cache first
-//         const cached = await redis.get(cacheKey);
-//         if (cached) {
-//             return JSON.parse(cached);
-//         }
-
-//         // Fetch all products with their variants and pricing
-//         const products = await prisma.product.findMany({
-//             include: {
-//                 variants: {
-//                     include: {
-//                         inventory: true,
-//                         warranty: true,
-//                         fromConversions: {
-//                             include: {
-//                                 toVariant: true
-//                             }
-//                         },
-//                         toConversions: {
-//                             include: {
-//                                 fromVariant: true
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         });
-
-//         // Convert BigInt to string for caching
-//         const serializedProducts = JSON.parse(JSON.stringify(products, (key, value) =>
-//             typeof value === 'bigint' ? value.toString() : value
-//         ));
-
-//         // Cache the serialized data for 1 hour
-//         await redis.setEx(cacheKey, 3600, JSON.stringify(serializedProducts));
-
-//         return serializedProducts;
-//     } catch (error) {
-//         console.error('Error fetching all products with variants:', error);
-//         throw error;
-//     }
-// }
-
 interface GetProductsParams {
     page?: number;
     limit?: number;
@@ -68,7 +21,7 @@ interface PaginatedResult {
     };
 }
 
-export default async function getAllProducts({
+export async function getProducts({
     page = 1,
     limit = 20,
     search = ''
@@ -84,29 +37,47 @@ export default async function getAllProducts({
             return JSON.parse(cached);
         }
 
-        // Build where clause
+        // Build where clause for search
         const whereClause = normalizedSearch
             ? { name: { contains: normalizedSearch, mode: 'insensitive' as const } }
             : {};
 
-        // Get total count for pagination
-        const totalCount = await prisma.product.count({
-            where: whereClause,
-        });
+        // Get total count for pagination (cached separately)
+        const countCacheKey = `products-count-s${normalizedSearch ? normalizedSearch : 'all'}`;
+        let totalCount: number = 0;
+        const cacheCount = await redis.get(countCacheKey);
+        if (!cacheCount) {
+            totalCount = await prisma.product.count({ where: whereClause });
+            await redis.setEx(countCacheKey, 3600 * 24 * 7, totalCount.toString());
+        } else {
+            totalCount = parseInt(cacheCount);
+        }
 
-        // Get products with pagination
+        // Get products with only necessary fields
         const products = await prisma.product.findMany({
             where: whereClause,
-            include: {
+            select: {
+                productId: true,
+                name: true,
+                productType: true,
+                brand: true,
                 variants: {
-                    include: {
-                        inventory: true,
-                        warranty: true,
-                        fromConversions: {
-                            include: { toVariant: true }
-                        },
-                        toConversions: {
-                            include: { fromVariant: true }
+                    select: {
+                        variantId: true,
+                        variantName: true,
+                        sku: true,
+                        barcode: true,
+                        weight: true,
+                        weightUnit: true,
+                        unit: true,
+                        imageUrl: true,
+                        retailPrice: true,
+                        wholesalePrice: true,
+                        createdAt: true,
+                        inventory: {
+                            select: {
+                                currentStock: true,
+                            },
                         },
                     },
                 },
@@ -114,7 +85,7 @@ export default async function getAllProducts({
             skip: (page - 1) * limit,
             take: limit,
             orderBy: {
-                createdAt: 'desc', // Add consistent ordering
+                createdAt: 'desc',
             },
         });
 
@@ -137,8 +108,8 @@ export default async function getAllProducts({
             },
         };
 
-        // Cache for 30 minutes (shorter for dynamic data)
-        await redis.setEx(cacheKey, 1800, JSON.stringify(result));
+        // Cache for 30 minutes
+        await redis.setEx(cacheKey, 3600 * 24 * 7, JSON.stringify(result));
 
         return result;
     } catch (error) {
@@ -147,8 +118,8 @@ export default async function getAllProducts({
     }
 }
 
-export async function getProductById(id: string, select: string[] = ['id', 'name', 'variants', 'inventory', 'warranty', 'conversions']) {
-    const cacheKey = `product-${id}-select-${select.join(',')}`;
+export async function getProductById(id: string) {
+    const cacheKey = `product-${id}-full`;
 
     try {
         const cached = await redis.get(cacheKey);
@@ -156,24 +127,86 @@ export async function getProductById(id: string, select: string[] = ['id', 'name
             return JSON.parse(cached);
         }
 
-        const include: any = {};
-        if (select.includes('variants')) {
-            include.variants = {
-                include: {
-                    inventory: select.includes('inventory'),
-                    warranty: select.includes('warranty'),
-                    fromConversions: select.includes('conversions') ? { include: { toVariant: true } } : false,
-                    toConversions: select.includes('conversions') ? { include: { fromVariant: true } } : false,
-                },
-            };
-        }
-
         const product = await prisma.product.findUnique({
-            where: { id },
+            where: { productId: BigInt(id) },
             select: {
-                id: select.includes('id'),
-                name: select.includes('name'),
-                variants: include.variants || false,
+                productId: true,
+                name: true,
+                description: true,
+                brand: true,
+                productType: true,
+                tags: true,
+                createdAt: true,
+                variants: {
+                    select: {
+                        variantId: true,
+                        sku: true,
+                        barcode: true,
+                        variantName: true,
+                        weight: true,
+                        weightUnit: true,
+                        unit: true,
+                        imageUrl: true,
+                        retailPrice: true,
+                        wholesalePrice: true,
+                        importPrice: true,
+                        taxApplied: true,
+                        inputTax: true,
+                        outputTax: true,
+                        createdAt: true,
+                        inventory: {
+                            select: {
+                                inventoryId: true,
+                                initialStock: true,
+                                currentStock: true,
+                                minStock: true,
+                                maxStock: true,
+                                warehouseLocation: true,
+                                updatedAt: true,
+                            },
+                        },
+                        warranty: {
+                            select: {
+                                warrantyId: true,
+                                expirationWarningDays: true,
+                                warrantyPolicy: true,
+                                createdAt: true,
+                            },
+                        },
+                        fromConversions: {
+                            select: {
+                                conversionId: true,
+                                toVariantId: true,
+                                conversionRate: true,
+                                createdAt: true,
+                                toVariant: {
+                                    select: {
+                                        variantId: true,
+                                        variantName: true,
+                                        sku: true,
+                                        unit: true,
+                                    },
+                                },
+                            },
+                        },
+                        toConversions: {
+                            select: {
+                                conversionId: true,
+                                fromVariantId: true,
+                                conversionRate: true,
+                                createdAt: true,
+                                fromVariant: {
+                                    select: {
+                                        variantId: true,
+                                        variantName: true,
+                                        sku: true,
+                                        unit: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -185,7 +218,7 @@ export async function getProductById(id: string, select: string[] = ['id', 'name
             typeof value === 'bigint' ? value.toString() : value
         ));
 
-        await redis.setEx(cacheKey, 3600, JSON.stringify(serializedProduct));
+        await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
         return serializedProduct;
     } catch (error) {
         console.error('Error fetching product:', error);

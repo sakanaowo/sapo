@@ -1,11 +1,25 @@
+import { getProductById } from '@/actions/product.action'
+import ProductDetailView from '@/components/products/product-detail-view';
+import { notFound } from 'next/navigation';
 import React from 'react'
 
-function ProductDetailPage() {
-    return (
-        <div>ProductDetailPage
+async function ProductDetailPage({ params }: { params: { id: string } }) {
+    const { id } = params;
 
-        </div>
-    )
+    if (!id) {
+        notFound();
+    }
+
+    try {
+        const product = await getProductById(id);
+        if (!product) {
+            notFound();
+        }
+        return <ProductDetailView product={product} />
+    } catch (error) {
+        console.error("Failed to fetch product:", error);
+        notFound();
+    }
 }
 
 export default ProductDetailPage

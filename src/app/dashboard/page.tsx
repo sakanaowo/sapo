@@ -1,8 +1,11 @@
 import React from 'react'
+import Under_Construction from '../under-construction'
 
 function DashboardPage() {
     return (
-        <div>Dashboard</div>
+        <>
+            <Under_Construction />
+        </>
     )
 }
 
