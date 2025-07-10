@@ -77,26 +77,26 @@ const data = {
                     title: "Danh sách sản phẩm",
                     url: "/products",
                 },
-                {
-                    title: "Quản lý kho",
-                    url: "/products/inventory",
-                },
-                {
-                    title: "Đặt hàng nhập",
-                    url: "/products/purchase-orders",
-                },
+                // {
+                //     title: "Quản lý kho",
+                //     url: "/products/inventory",
+                // },
+                // {
+                //     title: "Đặt hàng nhập",
+                //     url: "/products/purchase-orders",
+                // },
                 {
                     title: "Nhập hàng",
                     url: "/products/receive",
                 },
-                {
-                    title: "Kiểm hàng",
-                    url: "/products/inspect",
-                },
-                {
-                    title: "Chuyển hàng",
-                    url: "/products/transfer",
-                },
+                // {
+                //     title: "Kiểm hàng",
+                //     url: "/products/inspect",
+                // },
+                // {
+                //     title: "Chuyển hàng",
+                //     url: "/products/transfer",
+                // },
                 {
                     title: "Nhà cung cấp",
                     url: "/products/suppliers",

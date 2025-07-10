@@ -9,16 +9,16 @@ app/
 │   │   └── page.tsx          # Route: /orders/:id (Chi tiết đơn hàng, dynamic route)
 │   └── page.tsx              # Route: /orders (Danh sách đơn hàng)
 ├── products/
-│   ├── inventory/
-│   │   └── page.tsx          # Route: /products/inventory (Quản lý kho)
-│   ├── purchase-orders/
-│   │   └── page.tsx          # Route: /products/purchase-orders (Đặt hàng nhập)
+-- │   ├── inventory/
+-- │   │   └── page.tsx          # Route: /products/inventory (Quản lý kho)
+-- │   ├── purchase-orders/
+-- │   │   └── page.tsx          # Route: /products/purchase-orders (Đặt hàng nhập)
 │   ├── receive/
 │   │   └── page.tsx          # Route: /products/receive (Nhập hàng)
 │   ├── inspect/
 │   │   └── page.tsx          # Route: /products/inspect (Kiểm hàng)
-│   ├── transfer/
-│   │   └── page.tsx          # Route: /products/transfer (Chuyển hàng)
+-- │   ├── transfer/
+-- │   │   └── page.tsx          # Route: /products/transfer (Chuyển hàng)
 │   ├── suppliers/
 │   │   └── page.tsx          # Route: /products/suppliers (Nhà cung cấp)
 │   ├── cost-adjustments/

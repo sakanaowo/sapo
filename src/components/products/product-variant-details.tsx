@@ -86,20 +86,24 @@ const ProductVariantDetails: React.FC<ProductVariantDetailsProps> = ({ variant }
                                         <div>
                                             <h4 className="font-semibold mb-2 text-sm">Quy đổi đơn vị</h4>
                                             <div className="space-y-1.5">
-                                                {variant.toConversions.map(conv => (
-                                                    <DetailRow
-                                                        key={conv.conversionId}
-                                                        label={`1 ${variant.unit} =`}
-                                                        value={`${conv.conversionRate} ${conv.fromVariant.unit}`}
-                                                    />
-                                                ))}
-                                                {variant.fromConversions.map(conv => (
-                                                    <DetailRow
-                                                        key={conv.conversionId}
-                                                        label={`1 ${conv.toVariant.unit} =`}
-                                                        value={`${1 / conv.conversionRate} ${variant.unit}`}
-                                                    />
-                                                ))}
+                                                {variant.toConversions
+                                                    .filter(conv => conv.conversionRate >= 1)
+                                                    .map(conv => (
+                                                        <DetailRow
+                                                            key={conv.conversionId}
+                                                            label={`1 ${variant.unit} =`}
+                                                            value={`${conv.conversionRate} ${conv.fromVariant.unit}`}
+                                                        />
+                                                    ))}
+                                                {variant.fromConversions
+                                                    .filter(conv => (1 / conv.conversionRate) >= 1)
+                                                    .map(conv => (
+                                                        <DetailRow
+                                                            key={conv.conversionId}
+                                                            label={`1 ${conv.toVariant.unit} =`}
+                                                            value={`${1 / conv.conversionRate} ${variant.unit}`}
+                                                        />
+                                                    ))}
                                             </div>
                                         </div>
                                     </>
@@ -111,7 +115,7 @@ const ProductVariantDetails: React.FC<ProductVariantDetailsProps> = ({ variant }
                             <div className="flex items-center space-x-2">
                                 <Checkbox id="taxApplied" checked={variant.taxApplied} disabled />
                                 <Label htmlFor="taxApplied" className="text-sm">
-                                    Áp dụng thuế
+                                    {(variant.taxApplied ? 'Đã áp dụng' : 'Chưa áp dụng') + ' thuế'}
                                 </Label>
                             </div>
                         </div>

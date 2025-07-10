@@ -118,96 +118,229 @@ export async function getProducts({
     }
 }
 
-export async function getProductById(id: string) {
-    const cacheKey = `product-${id}-full`;
+// export async function getProductById(id: string) {
+//     const cacheKey = `product-${id}-full`;
+
+//     try {
+//         const cached = await redis.get(cacheKey);
+//         if (cached) {
+//             return JSON.parse(cached);
+//         }
+
+//         const product = await prisma.product.findUnique({
+//             where: { productId: BigInt(id) },
+//             select: {
+//                 productId: true,
+//                 name: true,
+//                 description: true,
+//                 brand: true,
+//                 productType: true,
+//                 tags: true,
+//                 createdAt: true,
+//                 variants: {
+//                     select: {
+//                         variantId: true,
+//                         sku: true,
+//                         barcode: true,
+//                         variantName: true,
+//                         weight: true,
+//                         weightUnit: true,
+//                         unit: true,
+//                         imageUrl: true,
+//                         retailPrice: true,
+//                         wholesalePrice: true,
+//                         importPrice: true,
+//                         taxApplied: true,
+//                         inputTax: true,
+//                         outputTax: true,
+//                         createdAt: true,
+//                         inventory: {
+//                             select: {
+//                                 inventoryId: true,
+//                                 initialStock: true,
+//                                 currentStock: true,
+//                                 minStock: true,
+//                                 maxStock: true,
+//                                 warehouseLocation: true,
+//                                 updatedAt: true,
+//                             },
+//                         },
+//                         warranty: {
+//                             select: {
+//                                 warrantyId: true,
+//                                 expirationWarningDays: true,
+//                                 warrantyPolicy: true,
+//                                 createdAt: true,
+//                             },
+//                         },
+//                         fromConversions: {
+//                             select: {
+//                                 conversionId: true,
+//                                 toVariantId: true,
+//                                 conversionRate: true,
+//                                 createdAt: true,
+//                                 toVariant: {
+//                                     select: {
+//                                         variantId: true,
+//                                         variantName: true,
+//                                         sku: true,
+//                                         unit: true,
+//                                     },
+//                                 },
+//                             },
+//                         },
+//                         toConversions: {
+//                             select: {
+//                                 conversionId: true,
+//                                 fromVariantId: true,
+//                                 conversionRate: true,
+//                                 createdAt: true,
+//                                 fromVariant: {
+//                                     select: {
+//                                         variantId: true,
+//                                         variantName: true,
+//                                         sku: true,
+//                                         unit: true,
+//                                     },
+//                                 },
+//                             },
+//                         },
+//                     },
+//                 },
+//             },
+//         });
+
+//         if (!product) {
+//             throw new Error('Product not found');
+//         }
+
+//         const serializedProduct = JSON.parse(JSON.stringify(product, (key, value) =>
+//             typeof value === 'bigint' ? value.toString() : value
+//         ));
+
+//         await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
+//         return serializedProduct;
+//     } catch (error) {
+//         console.error('Error fetching product:', error);
+//         throw error;
+//     }
+// }
+
+export async function getProductById(id: string, selectFields?: string[]) {
+    const cacheKey = `product-${id}-${selectFields ? selectFields.join('-') : 'full'}`;
 
     try {
+        // Check cache first
         const cached = await redis.get(cacheKey);
         if (cached) {
             return JSON.parse(cached);
         }
 
-        const product = await prisma.product.findUnique({
-            where: { productId: BigInt(id) },
-            select: {
-                productId: true,
-                name: true,
-                description: true,
-                brand: true,
-                productType: true,
-                tags: true,
-                createdAt: true,
-                variants: {
-                    select: {
-                        variantId: true,
-                        sku: true,
-                        barcode: true,
-                        variantName: true,
-                        weight: true,
-                        weightUnit: true,
-                        unit: true,
-                        imageUrl: true,
-                        retailPrice: true,
-                        wholesalePrice: true,
-                        importPrice: true,
-                        taxApplied: true,
-                        inputTax: true,
-                        outputTax: true,
-                        createdAt: true,
-                        inventory: {
-                            select: {
-                                inventoryId: true,
-                                initialStock: true,
-                                currentStock: true,
-                                minStock: true,
-                                maxStock: true,
-                                warehouseLocation: true,
-                                updatedAt: true,
-                            },
-                        },
-                        warranty: {
-                            select: {
-                                warrantyId: true,
-                                expirationWarningDays: true,
-                                warrantyPolicy: true,
-                                createdAt: true,
-                            },
-                        },
-                        fromConversions: {
-                            select: {
-                                conversionId: true,
-                                toVariantId: true,
-                                conversionRate: true,
-                                createdAt: true,
-                                toVariant: {
-                                    select: {
-                                        variantId: true,
-                                        variantName: true,
-                                        sku: true,
-                                        unit: true,
-                                    },
-                                },
-                            },
-                        },
-                        toConversions: {
-                            select: {
-                                conversionId: true,
-                                fromVariantId: true,
-                                conversionRate: true,
-                                createdAt: true,
-                                fromVariant: {
-                                    select: {
-                                        variantId: true,
-                                        variantName: true,
-                                        sku: true,
-                                        unit: true,
-                                    },
-                                },
-                            },
+        // Define default selections - core product data
+        const baseSelect = {
+            productId: true,
+            name: true,
+            description: true,
+            brand: true,
+            productType: true,
+            tags: true,
+            createdAt: true,
+        };
+
+        // Define variant selection based on need
+        const variantSelect = {
+            variantId: true,
+            sku: true,
+            barcode: true,
+            variantName: true,
+            weight: true,
+            weightUnit: true,
+            unit: true,
+            imageUrl: true,
+            retailPrice: true,
+            wholesalePrice: true,
+            importPrice: true,
+            taxApplied: true,
+        };
+
+        // Only include these when needed
+        const extendedVariantSelect = {
+            ...variantSelect,
+            inputTax: true,
+            outputTax: true,
+            createdAt: true,
+            // Add related data more selectively
+            inventory: !selectFields || selectFields.includes('inventory') ? {
+                select: {
+                    inventoryId: true,
+                    currentStock: true,
+                    // Only include additional fields when specifically requested
+                    ...((!selectFields || selectFields.includes('inventoryDetails')) && {
+                        initialStock: true,
+                        minStock: true,
+                        maxStock: true,
+                        warehouseLocation: true,
+                        updatedAt: true,
+                    }),
+                },
+            } : false,
+            warranty: !selectFields || selectFields.includes('warranty') ? {
+                select: {
+                    warrantyId: true,
+                    expirationWarningDays: true,
+                    warrantyPolicy: true,
+                    createdAt: true,
+                },
+            } : false,
+            // Conversions are expensive to query - only include when needed
+            fromConversions: !selectFields || selectFields.includes('conversions') ? {
+                select: {
+                    conversionId: true,
+                    toVariantId: true,
+                    conversionRate: true,
+                    createdAt: true,
+                    toVariant: {
+                        select: {
+                            variantId: true,
+                            variantName: true,
+                            sku: true,
+                            unit: true,
                         },
                     },
                 },
-            },
+            } : false,
+            toConversions: !selectFields || selectFields.includes('conversions') ? {
+                select: {
+                    conversionId: true,
+                    fromVariantId: true,
+                    conversionRate: true,
+                    createdAt: true,
+                    fromVariant: {
+                        select: {
+                            variantId: true,
+                            variantName: true,
+                            sku: true,
+                            unit: true,
+                        },
+                    },
+                },
+            } : false,
+        };
+
+        // Build query based on selectFields parameter
+        const select = {
+            ...baseSelect,
+            variants: {
+                select: selectFields && !selectFields.includes('variantDetails')
+                    ? variantSelect
+                    : extendedVariantSelect
+            }
+        };
+
+        // Execute query with optimized selection
+        const product = await prisma.product.findUnique({
+            where: { productId: BigInt(id) },
+            select,
         });
 
         if (!product) {
@@ -218,6 +351,7 @@ export async function getProductById(id: string) {
             typeof value === 'bigint' ? value.toString() : value
         ));
 
+        // Cache for 1 day (adjust cache time based on data update frequency)
         await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
         return serializedProduct;
     } catch (error) {

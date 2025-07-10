@@ -7,9 +7,84 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Plus, X } from "lucide-react";
 
+type Product = {
+    id: string;
+    image: string;
+    name: string;
+    SKU: string;
+    unit: string[];
+    quantity: number;
+    price: number;
+    amount: number;
+}
+
+type Order = {
+    id: string;
+    name: string;
+    products: Product[];
+    total: number;
+}
+
 export default function POSPage() {
-    const [orders, setOrders] = useState(["Đơn 1", "Đơn 2"]);
+    // const [orders, setOrders] = useState(["Đơn 1", "Đơn 2"]);
     const [activeTab, setActiveTab] = useState("Đơn 1");
+
+    const [orders, setOrders] = useState<Order[]>([
+        { id: "1", name: "Đơn 1", products: [], total: 0 },
+        { id: "2", name: "Đơn 2", products: [], total: 0 },
+    ]);
+
+    const addProductToOrder = (orderId: string, product: Product) => {
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.id === orderId
+                    ? {
+                        ...order,
+                        products: [...order.products, product],
+                        total: order.total + product.price * product.quantity,
+                    }
+                    : order
+            )
+        );
+    };
+    const removeProductFromOrder = (orderId: string, productId: string) => {
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.id === orderId
+                    ? {
+                        ...order,
+                        products: order.products.filter((p) => p.id !== productId),
+                        total: order.products.reduce(
+                            (sum, p) => sum + p.price * p.quantity,
+                            0
+                        ),
+                    }
+                    : order
+            )
+        );
+    };
+    const updateProductQuantity = (
+        orderId: string,
+        productId: string,
+        quantity: number
+    ) => {
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.id === orderId
+                    ? {
+                        ...order,
+                        products: order.products.map((p) =>
+                            p.id === productId ? { ...p, quantity } : p
+                        ),
+                        total: order.products.reduce(
+                            (sum, p) => sum + p.price * p.quantity,
+                            0
+                        ),
+                    }
+                    : order
+            )
+        );
+    };
 
     const addOrder = () => {
         const newOrder = `Đơn ${orders.length + 1}`;
@@ -26,6 +101,18 @@ export default function POSPage() {
             }
         }
     };
+
+    const EmptyOrder = () => (
+        <Card>
+            <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                    <div className="text-4xl mb-4">🛒</div>
+                    <p className="text-lg mb-2">Chưa có sản phẩm nào</p>
+                    <p className="text-sm">Sử dụng thanh tìm kiếm để thêm sản phẩm vào đơn hàng</p>
+                </div>
+            </CardContent>
+        </Card>
+    )
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -50,21 +137,19 @@ export default function POSPage() {
                                         <TabsTrigger
                                             key={order}
                                             value={order}
-                                            className="relative group data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                                            className="relative group"
                                         >
                                             {order}
                                             {orders.length > 1 && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
+                                                <span
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         removeOrder(order);
                                                     }}
-                                                    className="ml-2 opacity-0 group-hover:opacity-100 hover:bg-destructive rounded-full p-0.5"
+                                                    className="ml-2 inline-flex items-center justify-center h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-destructive/20 cursor-pointer"
                                                 >
                                                     <X className="h-3 w-3" />
-                                                </Button>
+                                                </span>
                                             )}
                                         </TabsTrigger>
                                     ))}
@@ -91,15 +176,7 @@ export default function POSPage() {
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         {orders.map((order) => (
                             <TabsContent key={order} value={order} className="mt-0">
-                                <Card>
-                                    <CardContent>
-                                        <div className="text-center py-12 text-muted-foreground">
-                                            <div className="text-4xl mb-4">🛒</div>
-                                            <p className="text-lg mb-2">Chưa có sản phẩm nào</p>
-                                            <p className="text-sm">Sử dụng thanh tìm kiếm để thêm sản phẩm vào đơn hàng</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <EmptyOrder />
                             </TabsContent>
                         ))}
                     </Tabs>

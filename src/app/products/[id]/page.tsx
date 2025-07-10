@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import React from 'react'
 
 async function ProductDetailPage({ params }: { params: { id: string } }) {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
         notFound();

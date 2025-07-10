@@ -2,15 +2,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MoreVertical, Trash2, Edit, Copy } from 'lucide-react';
+import { ArrowLeft, Trash2, Edit } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-    DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+
 
 interface ProductDetailHeaderProps {
     product: {
@@ -32,11 +26,6 @@ const ProductDetailHeader: React.FC<ProductDetailHeaderProps> = ({ product }) =>
         }
     };
 
-    const handleCopyId = () => {
-        navigator.clipboard.writeText(product.productId);
-        alert('Đã sao chép mã sản phẩm vào clipboard!');
-    };
-
     return (
         <div className="flex items-center justify-between bg-background py-2">
             <Button variant="ghost" onClick={() => router.push('/products')} className="gap-1">
@@ -53,28 +42,14 @@ const ProductDetailHeader: React.FC<ProductDetailHeaderProps> = ({ product }) =>
                     <Edit className="mr-2 h-4 w-4" />
                     Sửa sản phẩm
                 </Button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-9 w-9">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={() => router.push(`/products/${product.productId}/edit`)} className="md:hidden">
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Sửa sản phẩm</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleCopyId}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            <span>Sao chép mã sản phẩm</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Xóa sản phẩm</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    className="hidden md:flex"
+                    disabled={!product.productId} // Disable if no product ID
+                >
+                    <Trash2 />
+                    Xóa sản phẩm</Button>
             </div>
         </div>
     );

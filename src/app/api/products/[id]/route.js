@@ -3,18 +3,22 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request, context) {
     try {
-        const { params } = await context; // Chờ context để lấy params
-        const { id } = await params;
+        const { params } = context;
+        const { id } = params;
+        const { searchParams } = new URL(request.url);
 
-        // Validate ID
-        if (!id || isNaN(Number(id))) {
-            return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
-        }
+        // Get select parameter from query string
+        const selectParam = searchParams.get('select');
+        const select = selectParam ? selectParam.split(',') : undefined;
 
-        const product = await getProductById(id);
+        // Pass select fields to getProductById
+        const product = await getProductById(id, select);
         return NextResponse.json(product, { status: 200 });
     } catch (error) {
         console.error('API Error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal server error',
+            message: process.env.NODE_ENV === 'development' ? error.message : undefined
+        }, { status: 500 });
     }
 }
