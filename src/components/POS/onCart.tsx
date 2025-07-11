@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,10 @@ export default function OnCart({
     onRemoveProduct
 }: OnCartProps) {
     const [inputQuantity, setInputQuantity] = useState(product.quantity.toString());
+
+    useEffect(() => {
+        setInputQuantity(product.quantity.toString());
+    }, [product.quantity]);
 
     const handleQuantityChange = (newQuantity: number) => {
         if (newQuantity < 1) return;

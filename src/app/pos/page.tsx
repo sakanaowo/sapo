@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -46,11 +46,20 @@ type Order = {
     total: number;
 }
 
+/*TODO:
+- xử lý thanh toán 
+- sử lý in 
+*/
+
 export default function POSPage() {
+    const [searchQuery, setSearchQuery] = useState("");
     const [products, setProducts] = useState<Products[]>([]);
     const [filteredProducts, setFilteredProducts] = useState<Products[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [showSearchResults, setShowSearchResults] = useState(false);
 
+    const ORDERS_STORAGE_KEY = "orders";
+    const ACTIVE_TAB_STORAGE_KEY = "activeTab";
     useEffect(() => {
         const fetchProducts = async () => {
             setIsLoading(true);
@@ -75,81 +84,87 @@ export default function POSPage() {
         };
         fetchProducts();
     }, []);
-    console.log("Products:", products);
 
+    const [orderCounter, setOrderCounter] = useState(1)
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('pos_order_counter', orderCounter.toString());
+        }
+    }, [orderCounter]);
+
+
+    const [orders, setOrders] = useState<Order[]>([{
+        id: "1",
+        name: "Đơn 1",
+        products: [],
+        total: 0
+    }])
 
     const [activeTab, setActiveTab] = useState("Đơn 1");
-
-    const handleSearch = (query: string) => {
-        if (!query.trim()) {
-            setFilteredProducts(products);
-            return;
+    useEffect(() => {
+        // Load orderCounter
+        const savedCounter = localStorage.getItem('pos_order_counter');
+        if (savedCounter) {
+            setOrderCounter(parseInt(savedCounter) || 1);
         }
-        const searchTerm = query.toLowerCase();
-        const filtered = products.filter(product => {
-            const productNameMatch = product.name.toLowerCase().includes(searchTerm);
 
-            const variantMatch = product.variants.some(variant => {
-                const variantNameMatch = variant.variantName.toLowerCase().includes(searchTerm);
-                const barcodeMatch = variant.barcode ? variant.barcode.toLowerCase().includes(searchTerm) : false;
-                const skuMatch = variant.SKU.toLowerCase().includes(searchTerm);
-                return variantNameMatch || barcodeMatch || skuMatch;
-            })
-            return productNameMatch || variantMatch;
-        })
-        setFilteredProducts(filtered);
+        // Load orders
+        const savedOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
+        if (savedOrders) {
+            try {
+                const parsedOrders = JSON.parse(savedOrders);
+                if (Array.isArray(parsedOrders) && parsedOrders.length > 0) {
+                    setOrders(parsedOrders);
+                }
+            } catch (error) {
+                console.error("Error parsing orders from localStorage:", error);
+            }
+        }
+
+        // Load activeTab
+        const savedActiveTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+        if (savedActiveTab) {
+            setActiveTab(savedActiveTab);
+        }
+    }, []);
+    useEffect(() => {
+        localStorage.setItem('pos_order_counter', orderCounter.toString());
+    }, [orderCounter]);
+
+    // Auto-save orders
+    useEffect(() => {
+        try {
+            localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+        } catch (error) {
+            console.error('Error saving orders to localStorage:', error);
+            toast.error('Lỗi khi lưu đơn hàng');
+        }
+    }, [orders]);
+
+    // Auto-save activeTab
+    useEffect(() => {
+        try {
+            localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+        } catch (error) {
+            console.error('Error saving active tab to localStorage:', error);
+        }
+    }, [activeTab]);
+
+
+
+    const handleSearchBlur = () => {
+        setTimeout(() => {
+            setSearchQuery("");
+            setFilteredProducts(products);
+            setShowSearchResults(false);
+        }, 200);
     }
-
-    // Khởi tạo orders với một số sản phẩm mẫu
-    const [orders, setOrders] = useState<Order[]>([
-        {
-            id: "1",
-            name: "Đơn 1",
-            products: [
-                {
-                    id: "1",
-                    productId: "1",
-                    image: "https://sapo.dktcdn.net/100/705/120/variants/9ccf3470-4e20-41e0-9935-d342b0d877f7.jpg",
-                    name: "DG Xmen Fire dây",
-                    SKU: "PVN5599",
-                    unit: ["dây"],
-                    quantity: 2,
-                    price: 15000,
-                    amount: 30000
-                },
-                {
-                    id: "5",
-                    productId: "4",
-                    image: "https://sapo.dktcdn.net/100/705/120/variants/146812a3-32db-4f14-80cc-e6aece96c796.jpg",
-                    name: "Muối chanh ớt Dasavi 260g",
-                    SKU: "PVN5596",
-                    unit: ["chai"],
-                    quantity: 1,
-                    price: 25000,
-                    amount: 25000
-                }
-            ],
-            total: 55000
-        },
-        {
-            id: "2",
-            name: "Đơn 2",
-            products: [
-                {
-                    id: "6",
-                    productId: "5",
-                    image: "https://sapo.dktcdn.net/100/705/120/variants/4ab13a99-38f6-4c17-9a49-09d936a83187.jpg",
-                    name: "Tẩy trắng Hygiene 250ml",
-                    SKU: "PVN5595",
-                    unit: ["chai"],
-                    quantity: 3,
-                    price: 18000,
-                    amount: 54000
-                }
-            ],
-            total: 54000
-        },
-    ]);
+    const handleSearchFocus = () => {
+        if (searchQuery.trim()) {
+            setShowSearchResults(true);
+        }
+    }
 
     const currentOrder = orders.find(order => order.name === activeTab);
 
@@ -171,15 +186,17 @@ export default function POSPage() {
     };
 
     const addOrder = () => {
-        const newOrderId = (orders.length + 1).toString();
+        const newOrderNumber = orderCounter + 1;
+        const newOrderId = `order_${newOrderNumber}_${Math.random().toString(36).substr(2, 9)}`
         const newOrder: Order = {
             id: newOrderId,
-            name: `Đơn ${orders.length + 1}`,
+            name: `Đơn ${newOrderNumber}`,
             products: [],
             total: 0
         };
         setOrders([...orders, newOrder]);
         setActiveTab(newOrder.name);
+        setOrderCounter(orderCounter + 1);
     };
 
     const removeOrder = (orderToRemove: string) => {
@@ -189,6 +206,17 @@ export default function POSPage() {
             if (activeTab === orderToRemove) {
                 setActiveTab(newOrders[0].name);
             }
+        } else {
+            // Nếu chỉ còn 1 đơn, reset về trạng thái ban đầu
+            const resetOrder: Order = {
+                id: 'order_reset_1',
+                name: "Đơn 1",
+                products: [],
+                total: 0
+            };
+            setOrders([resetOrder]);
+            setActiveTab(resetOrder.name);
+            setOrderCounter(1);
         }
     };
 
@@ -250,101 +278,118 @@ export default function POSPage() {
         const existingProduct = currentOrder.products.find(p => p.id === variant.variantId);
         if (existingProduct) {
             updateProductQuantity(variant.variantId, existingProduct.quantity + 1);
-            return;
+            toast.success(`Đã tăng số lượng ${productName}`);
+        } else {
+            const newCartProduct: CartProduct = {
+                id: variant.variantId,
+                productId: variant.variantId,
+                image: variant.image || productImage || "",
+                name: `${productName} - ${variant.variantName}`,
+                SKU: variant.SKU,
+                unit: [variant.unit],
+                quantity: 1,
+                price: variant.price,
+                amount: variant.price
+            }
+            setOrders((prev) =>
+                prev.map((order) =>
+                    order.id === currentOrder.id
+                        ? {
+                            ...order,
+                            products: [...order.products, newCartProduct],
+                            total: order.total + newCartProduct.price
+                        }
+                        : order
+                )
+            );
+            toast.success(`Đã thêm ${newCartProduct.name} vào đơn hàng`);
         }
 
-        const newCartProduct: CartProduct = {
-            id: variant.variantId,
-            productId: variant.variantId, // hoặc productId nếu có
-            image: variant.image || productImage || "",
-            name: `${productName} - ${variant.variantName}`,
-            SKU: variant.SKU,
-            unit: [variant.unit],
-            quantity: 1,
-            price: variant.price,
-            amount: variant.price
-        }
-        setOrders((prev) =>
-            prev.map((order) =>
-                order.id === currentOrder.id
-                    ? {
-                        ...order,
-                        products: [...order.products, newCartProduct],
-                        total: order.total + newCartProduct.price
-                    }
-                    : order
-            )
-        );
-        toast.success(`Đã thêm ${newCartProduct.name} vào đơn hàng`);
+        setSearchQuery("");
+        setShowSearchResults(false);
+        setFilteredProducts(products);
     }
 
-    const SearchResults = () => {
+    const SearchDropdown = () => {
+        if (!showSearchResults) return null;
+
         if (isLoading) {
             return (
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="text-center">
-                            <div className="text-muted-foreground">Đang tải sản phẩm...</div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border rounded-md shadow-lg max-h-96 overflow-y-auto">
+                    <div className="p-4 text-center text-muted-foreground">
+                        Đang tải sản phẩm...
+                    </div>
+                </div>
             );
         }
 
         if (filteredProducts.length === 0) {
             return (
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="text-center text-muted-foreground">
-                            <div className="text-4xl mb-4">🔍</div>
-                            <p className="text-lg mb-2">Không tìm thấy sản phẩm</p>
-                            <p className="text-sm">Thử tìm kiếm với từ khóa khác</p>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border rounded-md shadow-lg">
+                    <div className="p-4 text-center text-muted-foreground">
+                        <div className="text-2xl mb-2">🔍</div>
+                        <p className="text-sm">Không tìm thấy sản phẩm</p>
+                    </div>
+                </div>
             );
         }
 
         return (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product) =>
-                    product.variants.map((variant) => (
-                        <Card
-                            key={variant.variantId}
-                            className="cursor-pointer hover:shadow-md transition-shadow"
-                            onClick={() => addProductToOrder(variant, product.name, product.image)}
-                        >
-                            <CardContent className="p-4">
-                                <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
-
-                                    <Image
-                                        src={variant.image || product.image || "/not-found.png"}
-                                        alt={variant.variantName}
-                                        className="w-full h-full object-cover"
-                                        width={200}
-                                        height={200}
-                                    />
-
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border rounded-md shadow-lg max-h-96 overflow-y-auto">
+                <div className="p-2">
+                    {filteredProducts.slice(0, 10).map((product) => // Giới hạn 10 sản phẩm đầu tiên
+                        product.variants.map((variant) => (
+                            <div
+                                key={variant.variantId}
+                                className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg cursor-pointer transition-colors"
+                                onClick={() => addProductToOrder(variant, product.name, product.image)}
+                            >
+                                {/* Ảnh sản phẩm */}
+                                <div className="w-12 h-12 flex-shrink-0">
+                                    <div className="w-full h-full bg-muted rounded-lg overflow-hidden">
+                                        <Image
+                                            src={variant.image || product.image || "/not-found.png"}
+                                            alt={variant.variantName}
+                                            className="w-full h-full object-cover"
+                                            width={48}
+                                            height={48}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">{variant.SKU}</p>
-                                    <p className="text-sm font-medium line-clamp-2" title={`${product.name} - ${variant.variantName}`}>
+
+                                {/* Thông tin sản phẩm */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium line-clamp-1" title={`${product.name} - ${variant.variantName}`}>
                                         {product.name} - {variant.variantName}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">{variant.unit}</p>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>SKU: {variant.SKU}</span>
+                                        <span>•</span>
+                                        <span>{variant.unit}</span>
+                                        {variant.barcode && (
+                                            <>
+                                                <span>•</span>
+                                                <span>{variant.barcode}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Giá */}
+                                <div className="flex-shrink-0">
                                     <p className="text-sm font-bold text-primary">
                                         {variant.price.toLocaleString('vi-VN')}₫
                                     </p>
-                                    {variant.barcode && (
-                                        <p className="text-xs text-muted-foreground font-mono">
-                                            {variant.barcode}
-                                        </p>
-                                    )}
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))
-                )}
+                            </div>
+                        ))
+                    )}
+                    {filteredProducts.length > 10 && (
+                        <div className="p-3 text-center text-xs text-muted-foreground border-t">
+                            Và {filteredProducts.length - 10} sản phẩm khác...
+                        </div>
+                    )}
+                </div>
             </div>
         );
     }
@@ -361,6 +406,192 @@ export default function POSPage() {
         </Card>
     );
 
+    // const [isHydrated, setIsHydrated] = useState(false);
+
+    // useEffect(() => {
+    //     setIsHydrated(true);
+    // }, []);
+
+    // if (!isHydrated) {
+    //     return (
+    //         <div className="flex items-center justify-center h-screen">
+    //             <div className="text-center">
+    //                 <div className="text-lg">Đang tải...</div>
+    //             </div>
+    //         </div>
+    //     );
+    // }
+
+    // barcode scanner integration
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+
+    // barcode scanner logic
+    useEffect(() => {
+        let barcode = '';
+        let scanStartTime = 0;
+
+        const handleKeyPress = (e: KeyboardEvent) => {
+            // Tránh xử lý khi đang nhập trong input field khác
+            if (e.target instanceof HTMLInputElement && e.target !== searchInputRef.current) {
+                return;
+            }
+
+            const currentTime = Date.now();
+            const timeDiff = currentTime - scanStartTime;
+
+            // Nếu thời gian giữa các ký tự > 200ms, reset barcode
+            if (timeDiff > 200) {
+                barcode = '';
+            }
+
+            // Nếu là Enter (kết thúc scan)
+            if (e.key === 'Enter' && barcode.length > 0) {
+                e.preventDefault();
+                handleBarcodeScanned(barcode);
+                barcode = '';
+                setIsScanning(false);
+                return;
+            }
+
+            // Nếu là ký tự số hoặc chữ (mã vạch)
+            if (e.key.length === 1) {
+                // Nếu là ký tự đầu tiên hoặc thời gian nhập nhanh
+                if (barcode.length === 0 || timeDiff < 100) {
+                    setIsScanning(true);
+                    barcode += e.key;
+                    scanStartTime = currentTime;
+
+                    // Set timeout để reset nếu scan không hoàn thành
+                    if (scanTimeoutRef.current) {
+                        clearTimeout(scanTimeoutRef.current);
+                    }
+                    scanTimeoutRef.current = setTimeout(() => {
+                        barcode = '';
+                        setIsScanning(false);
+                    }, 200);
+
+                    // Ngăn việc nhập vào input khác khi đang scan
+                    if (isScanning && e.target !== searchInputRef.current) {
+                        e.preventDefault();
+                    }
+                }
+            }
+        };
+
+        // Lắng nghe sự kiện keypress toàn cục
+        document.addEventListener('keypress', handleKeyPress);
+        document.addEventListener('keydown', (e) => {
+            // Xử lý Enter key
+            if (e.key === 'Enter' && isScanning) {
+                handleKeyPress(e);
+            }
+        });
+
+        return () => {
+            document.removeEventListener('keypress', handleKeyPress);
+            if (scanTimeoutRef.current) {
+                clearTimeout(scanTimeoutRef.current);
+            }
+        };
+    }, [isScanning]);
+
+
+    // Xử lý phím tắt
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // F3 - Focus vào search
+            if (e.key === 'F3') {
+                e.preventDefault();
+                if (searchInputRef.current) {
+                    searchInputRef.current.focus();
+                    searchInputRef.current.select();
+                }
+            }
+
+            // F1 - Thanh toán
+            if (e.key === 'F1') {
+                e.preventDefault();
+                if (currentOrder && currentOrder.products.length > 0) {
+                    handlePayment(currentOrder.id);
+                }
+            }
+
+            // Escape - Clear search
+            if (e.key === 'Escape') {
+                setSearchQuery("");
+                setShowSearchResults(false);
+                setFilteredProducts(products);
+                if (searchInputRef.current) {
+                    searchInputRef.current.blur();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [currentOrder, products]);
+
+    // Xử lý khi barcode được scan
+    const handleBarcodeScanned = (scannedBarcode: string) => {
+        console.log('Barcode scanned:', scannedBarcode);
+
+        // Tìm sản phẩm theo barcode
+        const foundProduct = products.find(product =>
+            product.variants.some(variant =>
+                variant.barcode === scannedBarcode
+            )
+        );
+
+        if (foundProduct) {
+            const foundVariant = foundProduct.variants.find(variant =>
+                variant.barcode === scannedBarcode
+            );
+
+            if (foundVariant) {
+                // Thêm sản phẩm vào đơn hàng
+                addProductToOrder(foundVariant, foundProduct.name, foundProduct.image);
+                toast.success(`Đã quét mã: ${foundVariant.variantName}`);
+            }
+        } else {
+            // Không tìm thấy sản phẩm, hiển thị trong search
+            setSearchQuery(scannedBarcode);
+            handleSearch(scannedBarcode);
+            toast.warning(`Không tìm thấy sản phẩm với mã: ${scannedBarcode}`);
+
+            // Focus vào search input
+            if (searchInputRef.current) {
+                searchInputRef.current.focus();
+            }
+        }
+    };
+
+    const handleSearch = (query: string) => {
+        setSearchQuery(query);
+        if (!query.trim()) {
+            setFilteredProducts(products);
+            setShowSearchResults(false);
+            return;
+        }
+        const searchTerm = query.toLowerCase();
+        const filtered = products.filter(product => {
+            const productNameMatch = product.name.toLowerCase().includes(searchTerm);
+
+            const variantMatch = product.variants.some(variant => {
+                const variantNameMatch = variant.variantName.toLowerCase().includes(searchTerm);
+                const barcodeMatch = variant.barcode ? variant.barcode.toLowerCase().includes(searchTerm) : false;
+                const skuMatch = variant.SKU.toLowerCase().includes(searchTerm);
+                return variantNameMatch || barcodeMatch || skuMatch;
+            })
+            return productNameMatch || variantMatch;
+        })
+        setFilteredProducts(filtered);
+        setShowSearchResults(true);
+    }
+
+
     return (
         <div className="flex flex-col h-full bg-background">
             {/* Header */}
@@ -371,9 +602,13 @@ export default function POSPage() {
                         <Input
                             type="text"
                             placeholder="Tìm kiếm sản phẩm"
-                            className="pl-10"
+                            className={`pl-10 ${isScanning ? 'ring-2 ring-blue-500' : ''}`}
+                            value={searchQuery}
                             onChange={(e) => { handleSearch(e.target.value) }}
+                            onBlur={handleSearchBlur}
+                            onFocus={handleSearchFocus}
                         />
+                        <SearchDropdown />
                     </div>
 
                     {/* Order Tabs */}
@@ -386,6 +621,10 @@ export default function POSPage() {
                                     className="relative group"
                                 >
                                     {order.name}
+                                    {/* Hiển thị indicator nếu đơn có sản phẩm */}
+                                    {order.products.length > 0 && (
+                                        <span className="ml-1 h-2 w-2 bg-primary rounded-full"></span>
+                                    )}
                                     {orders.length > 1 && (
                                         <span
                                             onClick={(e) => {
@@ -415,18 +654,12 @@ export default function POSPage() {
             {/* Main Content */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Product List Area */}
-                <div className="flex-1 p-6 overflow-y-auto">
+                <div className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-120px)] scrollbar-hide">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         {orders.map((order) => (
                             <TabsContent key={order.id} value={order.name} className="mt-0">
                                 {order.products.length === 0 ? (
-                                    <div className="space-y-6">
-                                        <EmptyOrder />
-                                        <div>
-                                            <h3 className="text-lg font-semibold mb-4">Tìm kiếm sản phẩm</h3>
-                                            <SearchResults />
-                                        </div>
-                                    </div>
+                                    <EmptyOrder />
                                 ) : (
                                     <div className="space-y-4">
                                         {order.products.map((product) => (
@@ -438,12 +671,6 @@ export default function POSPage() {
                                                 onRemoveProduct={(productId) => removeProductFromOrder(order.id, productId)}
                                             />
                                         ))}
-
-                                        {/* Hiển thị kết quả tìm kiếm bên dưới danh sách sản phẩm */}
-                                        <div className="mt-8">
-                                            <h3 className="text-lg font-semibold mb-4">Thêm sản phẩm</h3>
-                                            <SearchResults />
-                                        </div>
                                     </div>
                                 )}
                             </TabsContent>
