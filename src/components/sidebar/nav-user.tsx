@@ -2,9 +2,10 @@
 
 import {
     BadgeCheck,
-    Bell,
+    // Bell,
     ChevronsUpDown,
-    CreditCard,
+    LogIn,
+    // CreditCard,
     LogOut,
 } from "lucide-react"
 
@@ -29,17 +30,44 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { ModeToggle } from "../ModeToggle"
+import { useRouter } from "next/navigation"
+import { logout } from "@/actions/user.action"
+import { toast } from "sonner"
 
 export function NavUser({
     user,
 }: {
     user: {
-        name: string
-        email: string
-        avatar: string
-    }
+        adminId: string;
+        username: string;
+        email: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        avatar: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    } | null;
 }) {
     const { isMobile } = useSidebar()
+    const router = useRouter()
+
+    const handleAccountClick = () => {
+        router.push("/account")
+    }
+    const handleLogout = async () => {
+        try {
+            const result = await logout();
+            if (result.success) {
+                toast.success(result.message);
+                router.push("/login");
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            console.error("Logout error:", error);
+            toast.error("Có lỗi xảy ra khi đăng xuất");
+        }
+    }
 
     return (
         <SidebarMenu>
@@ -51,12 +79,12 @@ export function NavUser({
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                         >
                             <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarImage src={user.avatar} alt={user.name} />
+                                <AvatarImage src={user?.avatar ?? '/avatar.svg'} alt={user?.username ?? "User"} />
                                 <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">{user.name}</span>
-                                <span className="truncate text-xs">{user.email}</span>
+                                <span className="truncate font-medium">{user?.username ?? "Unknown User"}</span>
+                                <span className="truncate text-xs">{user?.email ?? ""}</span>
                             </div>
                             <ChevronsUpDown className="ml-auto size-4" />
                         </SidebarMenuButton>
@@ -70,12 +98,12 @@ export function NavUser({
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                 <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarImage src={user.avatar} alt={user.name} />
-                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                    <AvatarImage src={user?.avatar ?? '/avatar.svg'} alt={user?.username ?? "User"} />
+                                    <AvatarFallback className="rounded-lg">Unauthorized</AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-medium">{user.name}</span>
-                                    <span className="truncate text-xs">{user.email}</span>
+                                    <span className="truncate font-medium">{user?.username ?? "Unauthorized"}</span>
+                                    <span className="truncate text-xs">{user?.email ?? "Unauthorized"}</span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
@@ -89,24 +117,29 @@ export function NavUser({
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
+                            {user?.adminId ? null : (<DropdownMenuItem onClick={handleAccountClick}>
                                 <BadgeCheck />
                                 Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            </DropdownMenuItem>)}
+                            {/* <DropdownMenuItem>
                                 <CreditCard />
                                 Billing
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                                 <Bell />
                                 Notifications
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                        {user?.adminId ? (<DropdownMenuItem onClick={handleLogout}>
                             <LogOut />
                             Log out
-                        </DropdownMenuItem>
+                        </DropdownMenuItem>) : (
+                            <DropdownMenuItem onClick={() => router.push("/login")}>
+                                <LogIn />
+                                Login
+                            </DropdownMenuItem>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>

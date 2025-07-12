@@ -8,6 +8,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Admin {
+  adminId   BigInt   @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  email     String?  @unique
+  firstName String?
+  lastName  String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([username])
+  @@map("admin")
+}
+
 model Product {
   productId   BigInt           @id @default(autoincrement())
   name        String

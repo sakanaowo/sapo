@@ -122,7 +122,7 @@ export default function OnCart({
                             {/* Số lượng */}
                             <div className="col-span-2">
                                 <p className="text-xs text-muted-foreground mb-1">Số lượng</p>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5">
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -137,7 +137,7 @@ export default function OnCart({
                                         value={inputQuantity}
                                         onChange={(e) => handleInputChange(e.target.value)}
                                         onBlur={handleInputBlur}
-                                        className="h-8 w-12 text-center text-sm px-1"
+                                        className="h-8 w-16 text-sm text-center px-2"
                                     />
                                     <Button
                                         variant="outline"

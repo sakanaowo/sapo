@@ -87,7 +87,7 @@ const data = {
                 // },
                 {
                     title: "Nhập hàng",
-                    url: "/products/receive",
+                    url: "/products/purchase-orders",
                 },
                 // {
                 //     title: "Kiểm hàng",
@@ -163,10 +163,22 @@ const data = {
         },
     ],
 }
+interface AppSidebarProps {
+    user: {
+        adminId: bigint;
+        username: string;
+        email: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        avatar: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    } | null;
+}
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ user }: AppSidebarProps) {
     return (
-        <Sidebar collapsible="icon" {...props}>
+        <Sidebar collapsible="icon" >
             <SidebarHeader>
                 {/* <TeamSwitcher teams={data.teams} /> */}
                 <SidebarTrigger />
@@ -176,7 +188,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <NavProjects projects={data.projects} />
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={data.user} />
+                <NavUser user={user} />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>

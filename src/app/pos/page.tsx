@@ -9,6 +9,7 @@ import { Search, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import OnCart from "@/components/POS/onCart";
 import Image from "next/image";
+// import { getProductsForDisplay } from "@/actions/POS.action";
 
 type Variant = {
     variantId: string;
@@ -60,21 +61,31 @@ export default function POSPage() {
 
     const ORDERS_STORAGE_KEY = "orders";
     const ACTIVE_TAB_STORAGE_KEY = "activeTab";
+
     useEffect(() => {
         const fetchProducts = async () => {
             setIsLoading(true);
             try {
                 const response = await fetch('/api/POS', { method: 'GET' });
+                // const data = await getProductsForDisplay()
                 if (response.ok) {
                     const data = await response.json();
                     setProducts(data);
                     setFilteredProducts(data);
                 } else {
-                    // Xử lý lỗi HTTP
                     const errorData = await response.json().catch(() => ({}));
                     console.error("HTTP error:", response.status, errorData);
                     toast.error(`Lỗi khi tải sản phẩm: ${response.status}`);
                 }
+                // const normalizedProducts = data.map((product: any) => ({
+                //     ...product,
+                //     variants: product.variants.map((variant: any) => ({
+                //         ...variant,
+                //         barcode: variant.barcode ?? "",
+                //     })),
+                // }));
+                // setProducts(normalizedProducts);
+                // setFilteredProducts(normalizedProducts);
             } catch (error) {
                 console.error("Error fetching products:", error);
                 toast.error("Lỗi khi tải sản phẩm");
@@ -84,6 +95,7 @@ export default function POSPage() {
         };
         fetchProducts();
     }, []);
+    console.log("Products loaded:", products);
 
     const [orderCounter, setOrderCounter] = useState(1)
 
@@ -284,7 +296,7 @@ export default function POSPage() {
                 id: variant.variantId,
                 productId: variant.variantId,
                 image: variant.image || productImage || "",
-                name: `${productName} - ${variant.variantName}`,
+                name: `${variant.variantName}`,
                 SKU: variant.SKU,
                 unit: [variant.unit],
                 quantity: 1,
@@ -359,8 +371,8 @@ export default function POSPage() {
 
                                 {/* Thông tin sản phẩm */}
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium line-clamp-1" title={`${product.name} - ${variant.variantName}`}>
-                                        {product.name} - {variant.variantName}
+                                    <p className="text-sm font-medium line-clamp-1" title={`${variant.variantName}`}>
+                                        {variant.variantName}
                                     </p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <span>SKU: {variant.SKU}</span>
@@ -663,10 +675,10 @@ export default function POSPage() {
                                     <span className="text-sm text-muted-foreground">Tạm tính:</span>
                                     <span className="font-medium">{currentOrder?.total.toLocaleString('vi-VN')}₫</span>
                                 </div>
-                                <div className="flex justify-between items-center mb-2">
+                                {/* <div className="flex justify-between items-center mb-2">
                                     <span className="text-sm text-muted-foreground">Giảm giá:</span>
                                     <span className="font-medium text-green-600 dark:text-green-400">0₫</span>
-                                </div>
+                                </div> */}
                                 <hr className="my-3 border-border" />
                                 <div className="flex justify-between items-center">
                                     <span className="text-base font-semibold">Tổng cộng:</span>
