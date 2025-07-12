@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState } from 'react';
@@ -8,41 +7,20 @@ import ProductVariantDetails from './product-variant-details';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Product, Variant } from '../../lib/type';
 
-// Define types based on your prisma schema from product.action.ts
-type Variant = {
-    variantId: string;
-    variantName: string;
-    sku: string;
-    barcode: string | null;
-    weight: number;
-    weightUnit: string;
-    unit: string;
-    imageUrl: string | null;
-    retailPrice: number;
-    wholesalePrice: number;
-    importPrice: number;
-    taxApplied: boolean;
-    fromConversions: any[];
-    toConversions: any[];
-};
-
-type Product = {
-    productId: string;
-    name: string;
-    description: string | null;
-    brand: string | null;
-    productType: string | null;
-    tags: string[];
-    variants: Variant[];
-};
 
 interface ProductDetailViewProps {
     product: Product;
 }
 
+
 const ProductDetailView: React.FC<ProductDetailViewProps> = ({ product }) => {
     const [selectedVariant, setSelectedVariant] = useState<Variant>(product.variants[0]);
+
+    const handleSelectVariant = (variant: Variant): void => {
+        setSelectedVariant(variant);
+    };
 
     return (
         <div className="flex flex-col gap-6 max-w-7xl mx-auto p-4 md:p-6">
@@ -86,7 +64,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({ product }) => {
                                     <ProductVariantList
                                         variants={product.variants}
                                         selectedVariantId={selectedVariant.variantId}
-                                        onSelectVariant={setSelectedVariant}
+                                        onSelectVariant={handleSelectVariant}
                                     />
                                 </div>
                                 <div className="md:col-span-2">

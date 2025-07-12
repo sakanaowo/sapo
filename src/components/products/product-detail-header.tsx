@@ -19,9 +19,7 @@ const ProductDetailHeader: React.FC<ProductDetailHeaderProps> = ({ product }) =>
     const handleDelete = async () => {
         if (confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" không?`)) {
             // Add your delete logic here, e.g., calling a server action
-            console.log(`Deleting product ${product.productId}`);
-            // await deleteProductAction(product.productId);
-            // router.push('/products');
+            // console.log(`Deleting product ${product.productId}`);
             alert('Chức năng xóa chưa được triển khai.');
         }
     };

@@ -12,23 +12,23 @@ export async function currentUser() {
         const cookieStore = await cookies();
         const token = cookieStore.get('notsapo-auth-token')?.value;
 
-        console.log('🔍 Debug currentUser:');
-        console.log('- Token exists:', !!token);
-        console.log('- Token value:', token ? `${token.substring(0, 20)}...` : 'null');
+        // console.log('🔍 Debug currentUser:');
+        // console.log('- Token exists:', !!token);
+        // console.log('- Token value:', token ? `${token.substring(0, 20)}...` : 'null');
 
         if (!token) {
-            console.log('❌ No token found');
+            // console.log('❌ No token found');
             return null;
         }
 
         // Thêm validation cho JWT_SECRET
         if (!process.env.JWT_SECRET) {
-            console.error('❌ JWT_SECRET is not defined');
+            // console.error('❌ JWT_SECRET is not defined');
             return null;
         }
 
         const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET!));
-        console.log('✅ Token decoded:', { adminId: payload.adminId });
+        // console.log('✅ Token decoded:', { adminId: payload.adminId });
 
         const user = await prisma.admin.findUnique({
             where: {
@@ -36,8 +36,11 @@ export async function currentUser() {
             }
         });
 
-        console.log('👤 User found:', !!user);
-        return user;
+        // console.log('👤 User found:', !!user);
+        return user ? {
+            ...user,
+            adminId: user.adminId.toString()
+        } : null;
     } catch (error) {
         console.error('❌ Error in currentUser:', error);
         return null;
@@ -74,7 +77,7 @@ export async function login(username: string, password: string) {
             .setExpirationTime('365d')
             .sign(new TextEncoder().encode(process.env.JWT_SECRET!));
 
-        console.log("🔐 Token created:", token ? "✅" : "❌");
+        // console.log("🔐 Token created:", token ? "✅" : "❌");
 
         // Set cookie
         const cookieStore = await cookies();
@@ -85,7 +88,7 @@ export async function login(username: string, password: string) {
             maxAge: 60 * 60 * 24 * 7, // 7 days
         });
 
-        console.log("🍪 Cookie set successfully");
+        // console.log("🍪 Cookie set successfully");
 
         return {
             success: true,

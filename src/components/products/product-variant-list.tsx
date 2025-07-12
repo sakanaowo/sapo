@@ -3,14 +3,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import Image from 'next/image';
-
-type Variant = {
-    variantId: string;
-    variantName: string;
-    sku: string;
-    imageUrl?: string | null;
-    retailPrice?: number;
-};
+import { Variant } from '../../lib/type';
 
 interface ProductVariantListProps {
     variants: Variant[];

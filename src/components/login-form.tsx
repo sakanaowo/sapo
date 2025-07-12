@@ -42,7 +42,7 @@ export function LoginForm({
                     finalRedirect = redirectTo;
                 }
 
-                console.log("Redirecting to:", finalRedirect);
+                // console.log("Redirecting to:", finalRedirect);
                 router.push(finalRedirect);
             } else {
                 toast.error(res.message || "Login failed. Please try again.");

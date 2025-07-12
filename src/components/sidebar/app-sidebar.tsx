@@ -165,7 +165,7 @@ const data = {
 }
 interface AppSidebarProps {
     user: {
-        adminId: bigint;
+        adminId: string;
         username: string;
         email: string | null;
         firstName: string | null;

@@ -95,7 +95,7 @@ export default function POSPage() {
         };
         fetchProducts();
     }, []);
-    console.log("Products loaded:", products);
+    // console.log("Products loaded:", products);
 
     const [orderCounter, setOrderCounter] = useState(1)
 
@@ -479,6 +479,7 @@ export default function POSPage() {
             document.removeEventListener('keydown', handleKeyPress);
             if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScanning]);
 
 
@@ -516,11 +517,12 @@ export default function POSPage() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentOrder, products]);
 
     // Xử lý khi barcode được scan
     const handleBarcodeScanned = (scannedBarcode: string) => {
-        console.log('Barcode scanned:', scannedBarcode);
+        // console.log('Barcode scanned:', scannedBarcode);
 
         // Tìm sản phẩm theo barcode
         const foundProduct = products.find(product =>

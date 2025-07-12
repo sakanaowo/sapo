@@ -6,7 +6,7 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { cookies } from "next/headers";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { currentUser } from "@/actions/user.action";
-// import LoginPage from "./login/page";
+
 
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function RootLayout({
   const defaultOpen = cookieStore.get("sidebar-open")?.value === "true";
 
   const user = await currentUser();
-  console.log("Current User:", user);
+  // console.log("Current User:", user);
 
 
 

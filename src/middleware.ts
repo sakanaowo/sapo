@@ -11,7 +11,7 @@ const apiRoutes = ["/api/products", "/api/orders", "/api/pos"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  console.log(`🔄 Middleware processing: ${pathname}`);
+  // console.log(`🔄 Middleware processing: ${pathname}`);
 
   // Bỏ qua các file tĩnh và Next.js internals
   if (
@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
 
   // Cho phép truy cập route công khai
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
-    console.log(`✅ Public route allowed: ${pathname}`);
+    // console.log(`✅ Public route allowed: ${pathname}`);
     return NextResponse.next();
   }
 
@@ -33,13 +33,13 @@ export async function middleware(request: NextRequest) {
     // Lấy token trực tiếp từ cookies trong middleware
     const token = request.cookies.get("notsapo-auth-token")?.value;
 
-    console.log("🔍 Middleware token check:", {
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : null
-    });
+    // console.log("🔍 Middleware token check:", {
+    //   hasToken: !!token,
+    //   tokenPreview: token ? `${token.substring(0, 20)}...` : null
+    // });
 
     if (!token) {
-      console.log("❌ No token found, redirecting to login");
+      // console.log("❌ No token found, redirecting to login");
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
       new TextEncoder().encode(process.env.JWT_SECRET)
     );
 
-    console.log("✅ Token verified for user:", payload.adminId);
+    // console.log("✅ Token verified for user:", payload.adminId);
 
     // Kiểm tra quyền truy cập cho API routes
     if (apiRoutes.some((route) => pathname.startsWith(route))) {

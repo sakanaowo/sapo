@@ -19,7 +19,7 @@ export async function POST(request) {
 
         // Call login action - sửa cách gọi function
         const result = await login(username, password)
-        console.log('Login result:', result)
+        // console.log('Login result:', result)
 
         if (result.success) {
             return Response.json(

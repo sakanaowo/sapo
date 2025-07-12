@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,23 +7,7 @@ import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-
-type Variant = {
-    variantId: string;
-    variantName: string;
-    sku: string;
-    barcode: string | null;
-    weight: number;
-    weightUnit: string;
-    unit: string;
-    imageUrl: string | null;
-    retailPrice: number;
-    wholesalePrice: number;
-    importPrice: number;
-    taxApplied: boolean;
-    fromConversions: any[];
-    toConversions: any[];
-};
+import { Variant } from '../../lib/type';
 
 interface ProductVariantDetailsProps {
     variant: Variant;
