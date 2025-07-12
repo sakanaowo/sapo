@@ -22,8 +22,8 @@ type Variant = {
     wholesalePrice: number;
     importPrice: number;
     taxApplied: boolean;
-    fromConversions: any[];
-    toConversions: any[];
+    fromConversions: unknown[];
+    toConversions: unknown[];
 };
 
 type Product = {

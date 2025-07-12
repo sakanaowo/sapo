@@ -5,53 +5,53 @@ import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import useSWR from "swr";
 
 import ProductCard from "@/components/products/product-card";
 import { toast } from "sonner";
 
-interface Inventory {
-    inventoryId: string;
-    variantId: string;
-    initialStock: number;
-    currentStock: number;
-    minStock: number;
-    maxStock: number;
-    warehouseLocation: string | null;
-    updatedAt: string;
-}
+// interface Inventory {
+//     inventoryId: string;
+//     variantId: string;
+//     initialStock: number;
+//     currentStock: number;
+//     minStock: number;
+//     maxStock: number;
+//     warehouseLocation: string | null;
+//     updatedAt: string;
+// }
 
-interface Variant {
-    variantId: string;
-    productId: string;
-    sku: string;
-    barcode: string;
-    variantName: string;
-    weight: number;
-    weightUnit: string;
-    unit: string;
-    imageUrl: string | null;
-    retailPrice: number;
-    wholesalePrice: number;
-    importPrice: number;
-    taxApplied: boolean;
-    inputTax: number;
-    outputTax: number;
-    createdAt: string;
-    inventory: Inventory;
-}
+// interface Variant {
+//     variantId: string;
+//     productId: string;
+//     sku: string;
+//     barcode: string;
+//     variantName: string;
+//     weight: number;
+//     weightUnit: string;
+//     unit: string;
+//     imageUrl: string | null;
+//     retailPrice: number;
+//     wholesalePrice: number;
+//     importPrice: number;
+//     taxApplied: boolean;
+//     inputTax: number;
+//     outputTax: number;
+//     createdAt: string;
+//     inventory: Inventory;
+// }
 
-interface Product {
-    productId: string;
-    name: string;
-    description: string | null;
-    brand: string | null;
-    productType: string;
-    tags: string | null;
-    createdAt: string;
-    variants: Variant[];
-}
+// interface Product {
+//     productId: string;
+//     name: string;
+//     description: string | null;
+//     brand: string | null;
+//     productType: string;
+//     tags: string | null;
+//     createdAt: string;
+//     variants: Variant[];
+// }
 
 
 // function ProductsPage() {
