@@ -434,20 +434,13 @@ export default function POSPage() {
         let scanStartTime = 0;
 
         const handleKeyPress = (e: KeyboardEvent) => {
-            // Tránh xử lý khi đang nhập trong input field khác
-            if (e.target instanceof HTMLInputElement && e.target !== searchInputRef.current) {
-                return;
-            }
+            if (e.target instanceof HTMLInputElement && e.target !== searchInputRef.current) return;
 
             const currentTime = Date.now();
             const timeDiff = currentTime - scanStartTime;
 
-            // Nếu thời gian giữa các ký tự > 200ms, reset barcode
-            if (timeDiff > 200) {
-                barcode = '';
-            }
+            if (timeDiff > 100) barcode = '';
 
-            // Nếu là Enter (kết thúc scan)
             if (e.key === 'Enter' && barcode.length > 0) {
                 e.preventDefault();
                 handleBarcodeScanned(barcode);
@@ -456,47 +449,26 @@ export default function POSPage() {
                 return;
             }
 
-            // Nếu là ký tự số hoặc chữ (mã vạch)
             if (e.key.length === 1) {
-                // Nếu là ký tự đầu tiên hoặc thời gian nhập nhanh
-                if (barcode.length === 0 || timeDiff < 100) {
-                    setIsScanning(true);
-                    barcode += e.key;
-                    scanStartTime = currentTime;
+                barcode += e.key;
+                scanStartTime = currentTime;
+                setIsScanning(true);
 
-                    // Set timeout để reset nếu scan không hoàn thành
-                    if (scanTimeoutRef.current) {
-                        clearTimeout(scanTimeoutRef.current);
-                    }
-                    scanTimeoutRef.current = setTimeout(() => {
-                        barcode = '';
-                        setIsScanning(false);
-                    }, 200);
-
-                    // Ngăn việc nhập vào input khác khi đang scan
-                    if (isScanning && e.target !== searchInputRef.current) {
-                        e.preventDefault();
-                    }
-                }
+                if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+                scanTimeoutRef.current = setTimeout(() => {
+                    barcode = '';
+                    setIsScanning(false);
+                }, 200);
             }
         };
 
-        // Lắng nghe sự kiện keypress toàn cục
-        document.addEventListener('keypress', handleKeyPress);
-        document.addEventListener('keydown', (e) => {
-            // Xử lý Enter key
-            if (e.key === 'Enter' && isScanning) {
-                handleKeyPress(e);
-            }
-        });
-
+        document.addEventListener('keydown', handleKeyPress);
         return () => {
-            document.removeEventListener('keypress', handleKeyPress);
-            if (scanTimeoutRef.current) {
-                clearTimeout(scanTimeoutRef.current);
-            }
+            document.removeEventListener('keydown', handleKeyPress);
+            if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
         };
     }, [isScanning]);
+
 
 
     // Xử lý phím tắt
