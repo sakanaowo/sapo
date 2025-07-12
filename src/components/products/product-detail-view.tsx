@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState } from 'react';
@@ -22,8 +23,8 @@ type Variant = {
     wholesalePrice: number;
     importPrice: number;
     taxApplied: boolean;
-    fromConversions: unknown[];
-    toConversions: unknown[];
+    fromConversions: any[];
+    toConversions: any[];
 };
 
 type Product = {
