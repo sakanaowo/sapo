@@ -71,7 +71,7 @@ export async function getProductsForDisplay(): Promise<ProductForDisplay[]> {
     }
 }
 
-export const printInvoice = (invoiceData: {
+export const printInvoice = async (invoiceData: {
     storeName: string;
     address: string;
     phoneNumber: string;
