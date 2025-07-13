@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-// Các route công khai không cần xác thực
+export const dynamic = "force-dynamic";
+
 const publicRoutes = ["/login", "/api/auth", "/api/user/login"];
 
-// Các route API cần xác thực đặc biệt
+
 const apiRoutes = ["/api/products", "/api/orders", "/api/pos"];
 
 export async function middleware(request: NextRequest) {

@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { currentUser } from "@/actions/user.action";
 
-
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Not SAPO"

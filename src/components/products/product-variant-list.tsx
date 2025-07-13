@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import Image from 'next/image';
-import { Variant } from '../../lib/type';
+import { Variant } from '../../lib/type/type';
 
 interface ProductVariantListProps {
     variants: Variant[];

@@ -70,3 +70,82 @@ export async function getProductsForDisplay(): Promise<ProductForDisplay[]> {
         throw error;
     }
 }
+
+export const printInvoice = (invoiceData: {
+    storeName: string;
+    address: string;
+    phoneNumber: string;
+    products: { name: string; quantity: number; price: number }[];
+    totalAmount: number;
+    additionalMessage?: string;
+}) => {
+    const { storeName, address, phoneNumber, products, totalAmount, additionalMessage } = invoiceData;
+
+    // Format invoice content for thermal printer
+    let invoiceContent = `
+${storeName}
+${address}
+${phoneNumber}
+--------------------------
+`;
+
+    products.forEach(product => {
+        invoiceContent += `${product.name} x ${product.quantity} - ${product.price.toLocaleString('vi-VN')}₫\n`;
+    });
+
+    invoiceContent += `--------------------------\n`;
+    invoiceContent += `Total: ${totalAmount.toLocaleString('vi-VN')}₫\n`;
+    invoiceContent += `Thời gian: ${new Date().toLocaleString('vi-VN')}\n`;
+
+    if (additionalMessage) {
+        invoiceContent += `${additionalMessage}\n`;
+    }
+
+    invoiceContent += `--------------------------\n`;
+    invoiceContent += `Cảm ơn quý khách!\n`;
+
+    // For now, we'll use browser print API
+    // In production, this would integrate with thermal printer SDK
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Hóa đơn</title>
+                    <style>
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            font-size: 12px; 
+                            width: 58mm; 
+                            margin: 0; 
+                            padding: 10px;
+                        }
+                        .center { text-align: center; }
+                        .bold { font-weight: bold; }
+                        .line { border-top: 1px dashed #000; margin: 5px 0; }
+                        pre { margin: 0; white-space: pre-wrap; }
+                    </style>
+                </head>
+                <body>
+                    <pre class="center bold">${storeName}</pre>
+                    <pre class="center">${address}</pre>
+                    <pre class="center">${phoneNumber}</pre>
+                    <div class="line"></div>
+                    ${products.map(product =>
+            `<pre>${product.name} x ${product.quantity}</pre><pre style="text-align: right;">${product.price.toLocaleString('vi-VN')}₫</pre>`
+        ).join('')}
+                    <div class="line"></div>
+                    <pre class="bold">Tổng cộng: ${totalAmount.toLocaleString('vi-VN')}₫</pre>
+                    <pre>Thời gian: ${new Date().toLocaleString('vi-VN')}</pre>
+                    ${additionalMessage ? `<pre>${additionalMessage}</pre>` : ''}
+                    <div class="line"></div>
+                    <pre class="center">Cảm ơn quý khách!</pre>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+
+    return invoiceContent;
+};

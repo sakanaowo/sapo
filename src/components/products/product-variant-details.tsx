@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Variant } from '../../lib/type';
+import { Variant } from '../../lib/type/type';
 
 interface ProductVariantDetailsProps {
     variant: Variant;

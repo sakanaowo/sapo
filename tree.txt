@@ -29,7 +29,7 @@
 │   │   ├── product.action.ts
 │   │   └── user.action.ts
 │   ├── app
-│   │   ├── api
+│   │   ├── _api
 │   │   │   ├── POS
 │   │   │   │   └── route.ts
 │   │   │   ├── products
@@ -37,7 +37,11 @@
 │   │   │   │   │   └── route.js
 │   │   │   │   └── route.js
 │   │   │   └── user
-│   │   │       └── route.js
+│   │   │       ├── current
+│   │   │       │   └── route.js
+│   │   │       ├── login
+│   │   │       │   └── route.js
+│   │   │       └── logout
 │   │   ├── customers
 │   │   │   ├── groups
 │   │   │   │   └── page.tsx
@@ -63,6 +67,8 @@
 │   │   ├── pos
 │   │   │   └── page.tsx
 │   │   ├── products
+│   │   │   ├── components
+│   │   │   │   └── products-client.tsx
 │   │   │   ├── cost-adjustments
 │   │   │   │   └── page.tsx
 │   │   │   ├── create
@@ -88,12 +94,10 @@
 │   │   │       └── page.tsx
 │   │   ├── settings
 │   │   │   └── page.tsx
-│   │   ├── unauthorized
-│   │   │   └── page.tsx
 │   │   └── under-construction.tsx
 │   ├── components
-│   │   ├── AuthGuard.tsx
 │   │   ├── login-form.tsx
+│   │   ├── logout-button.tsx
 │   │   ├── ModeToggle.tsx
 │   │   ├── POS
 │   │   │   └── onCart.tsx
@@ -120,7 +124,6 @@
 │   │       ├── button.tsx
 │   │       ├── calendar.tsx
 │   │       ├── card.tsx
-│   │       ├── chart.tsx
 │   │       ├── checkbox.tsx
 │   │       ├── collapsible.tsx
 │   │       ├── dialog.tsx
@@ -150,9 +153,10 @@
 │   ├── lib
 │   │   ├── prisma.ts
 │   │   ├── redis.ts
+│   │   ├── type.ts
 │   │   └── utils.ts
 │   └── middleware.ts
 ├── tree.txt
 └── tsconfig.json
 
-41 directories, 115 files
+44 directories, 116 files

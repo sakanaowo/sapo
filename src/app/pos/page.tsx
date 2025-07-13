@@ -9,16 +9,17 @@ import { Search, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import OnCart from "@/components/POS/onCart";
 import Image from "next/image";
-// import { getProductsForDisplay } from "@/actions/POS.action";
+import { getProductsForDisplay, printInvoice } from "@/actions/POS.action";
+import { processPosPayment } from "@/actions/order.action";
 
 type Variant = {
     variantId: string;
     variantName: string;
     unit: string;
     price: number;
-    barcode: string;
+    barcode?: string;
     SKU: string;
-    image: string | null;
+    image?: string | null;
 }
 
 type Products = {
@@ -47,11 +48,6 @@ type Order = {
     total: number;
 }
 
-/*TODO:
-- xử lý thanh toán 
-- sử lý in 
-*/
-
 export default function POSPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [products, setProducts] = useState<Products[]>([]);
@@ -66,35 +62,16 @@ export default function POSPage() {
         const fetchProducts = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch('/api/POS', { method: 'GET' });
-                // const data = await getProductsForDisplay()
-                if (response.ok) {
-                    const data = await response.json();
-                    setProducts(data);
-                    setFilteredProducts(data);
-                } else {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.error("HTTP error:", response.status, errorData);
-                    toast.error(`Lỗi khi tải sản phẩm: ${response.status}`);
-                }
-                // const normalizedProducts = data.map((product: any) => ({
-                //     ...product,
-                //     variants: product.variants.map((variant: any) => ({
-                //         ...variant,
-                //         barcode: variant.barcode ?? "",
-                //     })),
-                // }));
-                // setProducts(normalizedProducts);
-                // setFilteredProducts(normalizedProducts);
+                const data = await getProductsForDisplay();
+                setProducts(data);
+                setFilteredProducts(data);
             } catch (error) {
                 console.error("Error fetching products:", error);
                 toast.error("Lỗi khi tải sản phẩm");
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            } finally { setIsLoading(false); }
+        }
         fetchProducts();
-    }, []);
+    }, [])
     // console.log("Products loaded:", products);
 
     const [orderCounter, setOrderCounter] = useState(1)
@@ -140,6 +117,7 @@ export default function POSPage() {
             setActiveTab(savedActiveTab);
         }
     }, []);
+
     useEffect(() => {
         localStorage.setItem('pos_order_counter', orderCounter.toString());
     }, [orderCounter]);
@@ -256,7 +234,7 @@ export default function POSPage() {
         // Logic để cập nhật đơn vị tính (nếu cần)
         console.log('Update unit:', productId, unit);
     };
-
+    // thanh toán
     const handlePayment = async (orderId: string) => {
         const order = orders.find(o => o.id === orderId);
         if (!order?.products.length) {
@@ -265,16 +243,10 @@ export default function POSPage() {
         }
 
         try {
-            const response = await fetch('/api/orders', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(order)
-            });
-
-            if (!response.ok) {
-                throw new Error('Payment failed');
+            const res = await processPosPayment(order)
+            if (!res.success) {
+                toast.error(`Lỗi khi thanh toán: ${res.error}` || "Đã xảy ra lỗi khi thanh toán");
+                return;
             }
 
             toast.success("Thanh toán thành công");
@@ -282,6 +254,37 @@ export default function POSPage() {
         } catch (error) {
             console.error("Error during payment:", error);
             toast.error("Lỗi khi thanh toán đơn hàng");
+        }
+    };
+    // In hóa đơn
+    const handlePrintInvoice = async (orderId: string) => {
+        const order = orders.find(o => o.id === orderId);
+        if (!order || !order.products.length) {
+            toast.error("Không có sản phẩm nào trong đơn hàng để in");
+            return;
+        }
+
+        try {
+            // Prepare invoice data
+            const invoiceData = {
+                storeName: "Tạp Hóa Bác Thanh",
+                address: "181 Ỷ La, Dương Nội, Hà Đông, Hà Nội",
+                phoneNumber: "0965 138 865",
+                products: order.products.map(product => ({
+                    name: product.name,
+                    quantity: product.quantity,
+                    price: product.amount // Tổng tiền của sản phẩm (price * quantity)
+                })),
+                totalAmount: order.total,
+                additionalMessage: "Hẹn gặp lại quý khách!"
+            };
+
+            // Call print function
+            printInvoice(invoiceData);
+            toast.success("Đã gửi lệnh in hóa đơn");
+        } catch (error) {
+            console.error("Error printing invoice:", error);
+            toast.error("Lỗi khi in hóa đơn");
         }
     };
 
@@ -418,22 +421,6 @@ export default function POSPage() {
         </Card>
     );
 
-    // const [isHydrated, setIsHydrated] = useState(false);
-
-    // useEffect(() => {
-    //     setIsHydrated(true);
-    // }, []);
-
-    // if (!isHydrated) {
-    //     return (
-    //         <div className="flex items-center justify-center h-screen">
-    //             <div className="text-center">
-    //                 <div className="text-lg">Đang tải...</div>
-    //             </div>
-    //         </div>
-    //     );
-    // }
-
     // barcode scanner integration
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -481,8 +468,6 @@ export default function POSPage() {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScanning]);
-
-
 
     // Xử lý phím tắt
     useEffect(() => {
@@ -540,6 +525,16 @@ export default function POSPage() {
                 // Thêm sản phẩm vào đơn hàng
                 addProductToOrder(foundVariant, foundProduct.name, foundProduct.image);
                 toast.success(`Đã quét mã: ${foundVariant.variantName}`);
+
+                // Reset search bar ngay lập tức khi tìm thấy sản phẩm
+                setSearchQuery("");
+                setShowSearchResults(false);
+                setFilteredProducts(products);
+
+                // Blur search input để tránh focus
+                if (searchInputRef.current) {
+                    searchInputRef.current.blur();
+                }
             }
         } else {
             // Không tìm thấy sản phẩm, hiển thị trong search
@@ -703,7 +698,13 @@ export default function POSPage() {
                             <Button variant="outline" className="flex-1" size="sm">
                                 Lưu tạm
                             </Button>
-                            <Button variant="outline" className="flex-1" size="sm">
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                size="sm"
+                                onClick={() => currentOrder && handlePrintInvoice(currentOrder.id)}
+                                disabled={!currentOrder?.products.length}
+                            >
                                 In bill
                             </Button>
                         </div>

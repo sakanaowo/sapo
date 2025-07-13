@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { jwtVerify, SignJWT } from "jose";
 
-// Thêm logging để debug
+
 export async function currentUser() {
     try {
         const cookieStore = await cookies();
