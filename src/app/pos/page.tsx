@@ -265,26 +265,25 @@ export default function POSPage() {
         }
 
         try {
-            // Prepare invoice data
             const invoiceData = {
+                logo: "",
                 storeName: "Tạp Hóa Bác Thanh",
                 address: "181 Ỷ La, Dương Nội, Hà Đông, Hà Nội",
                 phoneNumber: "0965 138 865",
-                products: order.products.map(product => ({
-                    name: product.name,
-                    quantity: product.quantity,
-                    price: product.amount // Tổng tiền của sản phẩm (price * quantity)
-                })),
+                products: order.products,
                 totalAmount: order.total,
-                additionalMessage: "Hẹn gặp lại quý khách!"
+                additionalMessages: "Hẹn gặp lại quý khách!"
             };
 
-            // Call print function
-            printInvoice(invoiceData);
-            toast.success("Đã gửi lệnh in hóa đơn");
+            const result = await printInvoice(invoiceData); // Gọi Server Action
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to print invoice');
+            }
+
+            toast.success(result.message || "Đã gửi lệnh in hóa đơn");
         } catch (error) {
             console.error("Error printing invoice:", error);
-            toast.error("Lỗi khi in hóa đơn");
+            toast.error(error instanceof Error ? error.message : "Lỗi khi in hóa đơn");
         }
     };
 

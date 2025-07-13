@@ -2,6 +2,9 @@
 
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
+import { InvoiceData } from '@/lib/type/printer.type';
+import { ThermalPrinter, PrinterTypes, CharacterSet } from 'node-thermal-printer';
+
 
 // Define interfaces for the output structure
 interface VariantForDisplay {
@@ -71,81 +74,72 @@ export async function getProductsForDisplay(): Promise<ProductForDisplay[]> {
     }
 }
 
-export const printInvoice = async (invoiceData: {
-    storeName: string;
-    address: string;
-    phoneNumber: string;
-    products: { name: string; quantity: number; price: number }[];
-    totalAmount: number;
-    additionalMessage?: string;
-}) => {
-    const { storeName, address, phoneNumber, products, totalAmount, additionalMessage } = invoiceData;
+const formatInvoiceData = (data: InvoiceData): string => {
+    const { logo, storeName, address, phoneNumber, products, totalAmount, additionalMessages } = data;
 
-    // Format invoice content for thermal printer
-    let invoiceContent = `
-${storeName}
-${address}
-${phoneNumber}
---------------------------
-`;
-
+    let invoice = "";
+    invoice += `Logo: ${logo}\n\n`;
+    invoice += `${storeName}\n`;
+    invoice += `${address}\n`;
+    invoice += `Phone: ${phoneNumber}\n\n`;
+    invoice += "Products:\n";
     products.forEach(product => {
-        invoiceContent += `${product.name} x ${product.quantity} - ${product.price.toLocaleString('vi-VN')}₫\n`;
+        invoice += `${product.name} (SKU: ${product.SKU}) - ${product.quantity} x ${product.price.toLocaleString('vi-VN')}₫ = ${product.amount.toLocaleString('vi-VN')}₫\n`;
+    });
+    invoice += `\nTotal: ${totalAmount.toLocaleString('vi-VN')}₫\n`;
+    if (additionalMessages) {
+        invoice += `\n${additionalMessages}\n`;
+    }
+    return invoice;
+};
+
+export async function printInvoice(invoiceData: InvoiceData) {
+    const printer = new ThermalPrinter({
+        type: PrinterTypes.EPSON, // Hoặc STAR tùy máy in
+        interface: 'usb',
+        characterSet: CharacterSet.TCVN_VIETNAMESE, // Hỗ trợ UTF-8 cho tiếng Việt
+        removeSpecialCharacters: false,
     });
 
-    invoiceContent += `--------------------------\n`;
-    invoiceContent += `Total: ${totalAmount.toLocaleString('vi-VN')}₫\n`;
-    invoiceContent += `Thời gian: ${new Date().toLocaleString('vi-VN')}\n`;
-
-    if (additionalMessage) {
-        invoiceContent += `${additionalMessage}\n`;
+    const isConnected = await printer.isPrinterConnected();
+    if (!isConnected) {
+        throw new Error('Máy in không được kết nối');
     }
 
-    invoiceContent += `--------------------------\n`;
-    invoiceContent += `Cảm ơn quý khách!\n`;
+    printer.alignCenter();
+    printer.bold(true);
+    printer.setTextDoubleHeight();
+    printer.println(invoiceData.storeName);
+    printer.println(invoiceData.address);
+    printer.println(`Phone: ${invoiceData.phoneNumber}`);
+    printer.newLine();
 
-    // For now, we'll use browser print API
-    // In production, this would integrate with thermal printer SDK
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Hóa đơn</title>
-                    <style>
-                        body { 
-                            font-family: 'Courier New', monospace; 
-                            font-size: 12px; 
-                            width: 58mm; 
-                            margin: 0; 
-                            padding: 10px;
-                        }
-                        .center { text-align: center; }
-                        .bold { font-weight: bold; }
-                        .line { border-top: 1px dashed #000; margin: 5px 0; }
-                        pre { margin: 0; white-space: pre-wrap; }
-                    </style>
-                </head>
-                <body>
-                    <pre class="center bold">${storeName}</pre>
-                    <pre class="center">${address}</pre>
-                    <pre class="center">${phoneNumber}</pre>
-                    <div class="line"></div>
-                    ${products.map(product =>
-            `<pre>${product.name} x ${product.quantity}</pre><pre style="text-align: right;">${product.price.toLocaleString('vi-VN')}₫</pre>`
-        ).join('')}
-                    <div class="line"></div>
-                    <pre class="bold">Tổng cộng: ${totalAmount.toLocaleString('vi-VN')}₫</pre>
-                    <pre>Thời gian: ${new Date().toLocaleString('vi-VN')}</pre>
-                    ${additionalMessage ? `<pre>${additionalMessage}</pre>` : ''}
-                    <div class="line"></div>
-                    <pre class="center">Cảm ơn quý khách!</pre>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
+    printer.alignLeft();
+    printer.println('Products:');
+    printer.drawLine();
+
+    invoiceData.products.forEach(product => {
+        printer.tableCustom([
+            { text: `${product.name} (SKU: ${product.SKU})`, align: 'LEFT', width: 0.5 },
+            { text: `${product.quantity} x ${product.price.toLocaleString('vi-VN')}₫`, align: 'RIGHT', width: 0.3 },
+            { text: `${product.amount.toLocaleString('vi-VN')}₫`, align: 'RIGHT', width: 0.2 },
+        ]);
+    });
+
+    printer.drawLine();
+    printer.alignRight();
+    printer.println(`Total: ${invoiceData.totalAmount.toLocaleString('vi-VN')}₫`);
+    printer.newLine();
+
+    if (invoiceData.additionalMessages) {
+        printer.alignCenter();
+        printer.println(invoiceData.additionalMessages);
     }
 
-    return invoiceContent;
-};
+    printer.cut();
+    await printer.execute();
+    printer.clear();
+
+    console.log("Printing invoice:\n", formatInvoiceData(invoiceData));
+    return { success: true, message: 'Đã gửi lệnh in hóa đơn' };
+}
