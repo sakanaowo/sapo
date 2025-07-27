@@ -26,6 +26,7 @@ export async function processPosPayment(order: POSOrder): Promise<{ success: boo
 
         const orderCode = `POS-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
         const result = await prisma.$transaction(async (tx) => {
+
             const createdOrder = await tx.order.create({
                 data: {
                     orderCode,
