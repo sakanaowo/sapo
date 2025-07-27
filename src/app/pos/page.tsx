@@ -11,6 +11,7 @@ import OnCart from "@/components/POS/onCart";
 import Image from "next/image";
 import { getProductsForDisplay, printInvoice } from "@/actions/POS.action";
 import { processPosPayment } from "@/actions/order.action";
+import onScan from "onscan.js";
 
 type Variant = {
     variantId: string;
@@ -54,6 +55,8 @@ export default function POSPage() {
     const [filteredProducts, setFilteredProducts] = useState<Products[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showSearchResults, setShowSearchResults] = useState(false);
+    const [isManualSearch, setIsManualSearch] = useState(false); // Track manual search
+    const [lastScanTime, setLastScanTime] = useState(0); // Track last scan time
 
     const ORDERS_STORAGE_KEY = "orders";
     const ACTIVE_TAB_STORAGE_KEY = "activeTab";
@@ -72,7 +75,6 @@ export default function POSPage() {
         }
         fetchProducts();
     }, [])
-    // console.log("Products loaded:", products);
 
     const [orderCounter, setOrderCounter] = useState(1)
 
@@ -82,7 +84,6 @@ export default function POSPage() {
         }
     }, [orderCounter]);
 
-
     const [orders, setOrders] = useState<Order[]>([{
         id: "1",
         name: "Đơn 1",
@@ -91,6 +92,7 @@ export default function POSPage() {
     }])
 
     const [activeTab, setActiveTab] = useState("Đơn 1");
+
     useEffect(() => {
         // Load orderCounter
         const savedCounter = localStorage.getItem('pos_order_counter');
@@ -141,23 +143,24 @@ export default function POSPage() {
         }
     }, [activeTab]);
 
-
-
     const handleSearchBlur = () => {
         setTimeout(() => {
+            if (!isManualSearch) return; // Don't clear if it's from barcode scan
             setSearchQuery("");
             setFilteredProducts(products);
             setShowSearchResults(false);
+            setIsManualSearch(false);
         }, 200);
     }
+
     const handleSearchFocus = () => {
+        setIsManualSearch(true); // Mark as manual search
         if (searchQuery.trim()) {
             setShowSearchResults(true);
         }
     }
 
     const currentOrder = orders.find(order => order.name === activeTab);
-
 
     const removeProductFromOrder = (orderId: string, productId: string) => {
         setOrders((prev) =>
@@ -231,9 +234,9 @@ export default function POSPage() {
     };
 
     const updateProductUnit = (productId: string, unit: string) => {
-        // Logic để cập nhật đơn vị tính (nếu cần)
         console.log('Update unit:', productId, unit);
     };
+
     // thanh toán
     const handlePayment = async (orderId: string) => {
         const order = orders.find(o => o.id === orderId);
@@ -256,6 +259,7 @@ export default function POSPage() {
             toast.error("Lỗi khi thanh toán đơn hàng");
         }
     };
+
     // In hóa đơn
     const handlePrintInvoice = async (orderId: string) => {
         const order = orders.find(o => o.id === orderId);
@@ -275,7 +279,7 @@ export default function POSPage() {
                 additionalMessages: "Hẹn gặp lại quý khách!"
             };
 
-            const result = await printInvoice(invoiceData); // Gọi Server Action
+            const result = await printInvoice(invoiceData);
             if (!result.success) {
                 throw new Error(result.message || 'Failed to print invoice');
             }
@@ -287,13 +291,46 @@ export default function POSPage() {
         }
     };
 
-    const addProductToOrder = (variant: Variant, productName: string, productImage?: string) => {
-        if (!currentOrder) return;
-        const existingProduct = currentOrder.products.find(p => p.id === variant.variantId);
+    const addProductToOrder = (variant: Variant, productName: string, productImage?: string, fromBarcode: boolean = false, targetOrderId?: string) => {
+        // Use targetOrderId if provided (for barcode), otherwise use currentOrder
+        const targetOrder = targetOrderId
+            ? orders.find(order => order.id === targetOrderId)
+            : currentOrder;
+
+        if (!targetOrder) return;
+
+        const existingProduct = targetOrder.products.find(p => p.id === variant.variantId);
+
         if (existingProduct) {
-            updateProductQuantity(variant.variantId, existingProduct.quantity + 1);
-            toast.success(`Đã tăng số lượng ${productName}`);
+            // Increase quantity for existing product in the target order
+            setOrders((prev) =>
+                prev.map((order) =>
+                    order.id === targetOrder.id
+                        ? {
+                            ...order,
+                            products: order.products.map((p) =>
+                                p.id === variant.variantId
+                                    ? { ...p, quantity: p.quantity + 1, amount: p.price * (p.quantity + 1) }
+                                    : p
+                            ),
+                            total: order.products
+                                .map((p) => p.id === variant.variantId
+                                    ? { ...p, quantity: p.quantity + 1, amount: p.price * (p.quantity + 1) }
+                                    : p
+                                )
+                                .reduce((sum, p) => sum + p.amount, 0)
+                        }
+                        : order
+                )
+            );
+
+            if (fromBarcode) {
+                toast.success(`Đã tăng số lượng ${variant.variantName} (${existingProduct.quantity + 1}) vào ${targetOrder.name}`);
+            } else {
+                toast.success(`Đã tăng số lượng ${productName} vào ${targetOrder.name}`);
+            }
         } else {
+            // Add new product to target order
             const newCartProduct: CartProduct = {
                 id: variant.variantId,
                 productId: variant.variantId,
@@ -305,9 +342,10 @@ export default function POSPage() {
                 price: variant.price,
                 amount: variant.price
             }
+
             setOrders((prev) =>
                 prev.map((order) =>
-                    order.id === currentOrder.id
+                    order.id === targetOrder.id
                         ? {
                             ...order,
                             products: [...order.products, newCartProduct],
@@ -316,16 +354,25 @@ export default function POSPage() {
                         : order
                 )
             );
-            toast.success(`Đã thêm ${newCartProduct.name} vào đơn hàng`);
+
+            if (fromBarcode) {
+                toast.success(`Đã thêm ${newCartProduct.name} vào ${targetOrder.name}`);
+            } else {
+                toast.success(`Đã thêm ${newCartProduct.name} vào đơn hàng`);
+            }
         }
 
-        setSearchQuery("");
-        setShowSearchResults(false);
-        setFilteredProducts(products);
+        // Only clear search if it's from manual search
+        if (!fromBarcode) {
+            setSearchQuery("");
+            setShowSearchResults(false);
+            setFilteredProducts(products);
+            setIsManualSearch(false);
+        }
     }
 
     const SearchDropdown = () => {
-        if (!showSearchResults) return null;
+        if (!showSearchResults || !isManualSearch) return null;
 
         if (isLoading) {
             return (
@@ -351,14 +398,13 @@ export default function POSPage() {
         return (
             <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border rounded-md shadow-lg max-h-96 overflow-y-auto">
                 <div className="p-2">
-                    {filteredProducts.slice(0, 10).map((product) => // Giới hạn 10 sản phẩm đầu tiên
+                    {filteredProducts.slice(0, 10).map((product) =>
                         product.variants.map((variant) => (
                             <div
                                 key={variant.variantId}
                                 className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg cursor-pointer transition-colors"
-                                onClick={() => addProductToOrder(variant, product.name, product.image)}
+                                onClick={() => addProductToOrder(variant, product.name, product.image, false)}
                             >
-                                {/* Ảnh sản phẩm */}
                                 <div className="w-12 h-12 flex-shrink-0">
                                     <div className="w-full h-full bg-muted rounded-lg overflow-hidden">
                                         <Image
@@ -371,7 +417,6 @@ export default function POSPage() {
                                     </div>
                                 </div>
 
-                                {/* Thông tin sản phẩm */}
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium line-clamp-1" title={`${variant.variantName}`}>
                                         {variant.variantName}
@@ -389,7 +434,6 @@ export default function POSPage() {
                                     </div>
                                 </div>
 
-                                {/* Giá */}
                                 <div className="flex-shrink-0">
                                     <p className="text-sm font-bold text-primary">
                                         {variant.price.toLocaleString('vi-VN')}₫
@@ -420,53 +464,89 @@ export default function POSPage() {
         </Card>
     );
 
-    // barcode scanner integration
+    // barcode scanner using onScan.js
     const searchInputRef = useRef<HTMLInputElement>(null);
-    const [isScanning, setIsScanning] = useState(false);
-    const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Xử lý khi barcode được scan
+    const handleBarcodeScanned = (scannedBarcode: string) => {
+        console.log('Barcode scanned:', scannedBarcode);
 
-    // barcode scanner logic
+        // Update last scan time
+        setLastScanTime(Date.now());
+
+        // Tìm sản phẩm theo barcode
+        const foundProduct = products.find(product =>
+            product.variants.some(variant =>
+                variant.barcode === scannedBarcode
+            )
+        );
+
+        if (foundProduct) {
+            const foundVariant = foundProduct.variants.find(variant =>
+                variant.barcode === scannedBarcode
+            );
+
+            if (foundVariant) {
+                // Thêm sản phẩm vào đơn hàng (with fromBarcode = true)
+                addProductToOrder(foundVariant, foundProduct.name, foundProduct.image, true);
+
+                // Clear search input (not search state)
+                if (searchInputRef.current) {
+                    searchInputRef.current.value = "";
+                    searchInputRef.current.blur();
+                }
+            }
+        } else {
+            // Không tìm thấy sản phẩm, hiển thị trong search
+            setSearchQuery(scannedBarcode);
+            handleSearch(scannedBarcode);
+            toast.warning(`Không tìm thấy sản phẩm với mã: ${scannedBarcode}`);
+
+            // Focus vào search input for manual search
+            if (searchInputRef.current) {
+                searchInputRef.current.focus();
+            }
+            setIsManualSearch(true);
+        }
+    };
+
+    // Initialize onScan.js
     useEffect(() => {
-        let barcode = '';
-        let scanStartTime = 0;
+        if (typeof window !== 'undefined') {
+            // Cấu hình onScan
+            onScan.attachTo(document, {
+                suffixKeyCodes: [13], // Enter as suffix
+                reactToPaste: false,
+                timeBetweenScansMillis: 50, // Increased to better distinguish from manual typing
+                minLength: 3, // Minimum length to avoid false positives
+                avgTimeByChar: 15, // Lower avg time per char for barcode scanning
+                preventDefault: false,
+                stopPropagation: false,
+                // Ignore scan when search input is focused and user is manually typing
+                ignoreIfFocusOn: false, // We'll handle this manually
+                onScan: (scannedBarcode: string) => {
+                    // Only process if not manual search or if enough time has passed since last manual input
+                    const now = Date.now();
+                    const timeSinceLastScan = now - lastScanTime;
 
-        const handleKeyPress = (e: KeyboardEvent) => {
-            if (e.target instanceof HTMLInputElement && e.target !== searchInputRef.current) return;
+                    // If search input is focused and user was recently typing, ignore
+                    if (searchInputRef.current === document.activeElement && isManualSearch && timeSinceLastScan < 1000) {
+                        return;
+                    }
 
-            const currentTime = Date.now();
-            const timeDiff = currentTime - scanStartTime;
+                    handleBarcodeScanned(scannedBarcode);
+                },
+                onScanError: (error: Event) => {
+                    console.log('Scan error:', error);
+                }
+            });
 
-            if (timeDiff > 100) barcode = '';
-
-            if (e.key === 'Enter' && barcode.length > 0) {
-                e.preventDefault();
-                handleBarcodeScanned(barcode);
-                barcode = '';
-                setIsScanning(false);
-                return;
-            }
-
-            if (e.key.length === 1) {
-                barcode += e.key;
-                scanStartTime = currentTime;
-                setIsScanning(true);
-
-                if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-                scanTimeoutRef.current = setTimeout(() => {
-                    barcode = '';
-                    setIsScanning(false);
-                }, 200);
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyPress);
-        return () => {
-            document.removeEventListener('keydown', handleKeyPress);
-            if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isScanning]);
+            // Cleanup function
+            return () => {
+                onScan.detachFrom(document);
+            };
+        }
+    }, [products, isManualSearch, lastScanTime, orders, activeTab]); // Added orders and activeTab dependencies
 
     // Xử lý phím tắt
     useEffect(() => {
@@ -477,6 +557,7 @@ export default function POSPage() {
                 if (searchInputRef.current) {
                     searchInputRef.current.focus();
                     searchInputRef.current.select();
+                    setIsManualSearch(true);
                 }
             }
 
@@ -493,6 +574,7 @@ export default function POSPage() {
                 setSearchQuery("");
                 setShowSearchResults(false);
                 setFilteredProducts(products);
+                setIsManualSearch(false);
                 if (searchInputRef.current) {
                     searchInputRef.current.blur();
                 }
@@ -501,52 +583,7 @@ export default function POSPage() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentOrder, products]);
-
-    // Xử lý khi barcode được scan
-    const handleBarcodeScanned = (scannedBarcode: string) => {
-        // console.log('Barcode scanned:', scannedBarcode);
-
-        // Tìm sản phẩm theo barcode
-        const foundProduct = products.find(product =>
-            product.variants.some(variant =>
-                variant.barcode === scannedBarcode
-            )
-        );
-
-        if (foundProduct) {
-            const foundVariant = foundProduct.variants.find(variant =>
-                variant.barcode === scannedBarcode
-            );
-
-            if (foundVariant) {
-                // Thêm sản phẩm vào đơn hàng
-                addProductToOrder(foundVariant, foundProduct.name, foundProduct.image);
-                toast.success(`Đã quét mã: ${foundVariant.variantName}`);
-
-                // Reset search bar ngay lập tức khi tìm thấy sản phẩm
-                setSearchQuery("");
-                setShowSearchResults(false);
-                setFilteredProducts(products);
-
-                // Blur search input để tránh focus
-                if (searchInputRef.current) {
-                    searchInputRef.current.blur();
-                }
-            }
-        } else {
-            // Không tìm thấy sản phẩm, hiển thị trong search
-            setSearchQuery(scannedBarcode);
-            handleSearch(scannedBarcode);
-            toast.warning(`Không tìm thấy sản phẩm với mã: ${scannedBarcode}`);
-
-            // Focus vào search input
-            if (searchInputRef.current) {
-                searchInputRef.current.focus();
-            }
-        }
-    };
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
@@ -568,9 +605,19 @@ export default function POSPage() {
             return productNameMatch || variantMatch;
         })
         setFilteredProducts(filtered);
-        setShowSearchResults(true);
+        if (isManualSearch) {
+            setShowSearchResults(true);
+        }
     }
 
+    // Handle manual input change
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (searchInputRef.current === document.activeElement) {
+            setIsManualSearch(true);
+        }
+        handleSearch(value);
+    }
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -580,11 +627,12 @@ export default function POSPage() {
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
+                            ref={searchInputRef}
                             type="text"
-                            placeholder="Tìm kiếm sản phẩm"
-                            className={`pl-10 ${isScanning ? 'ring-2 ring-blue-500' : ''}`}
+                            placeholder="Tìm kiếm sản phẩm (F3) hoặc quét barcode"
+                            className="pl-10"
                             value={searchQuery}
-                            onChange={(e) => { handleSearch(e.target.value) }}
+                            onChange={handleInputChange}
                             onBlur={handleSearchBlur}
                             onFocus={handleSearchFocus}
                         />
@@ -601,7 +649,6 @@ export default function POSPage() {
                                     className="relative group"
                                 >
                                     {order.name}
-                                    {/* Hiển thị indicator nếu đơn có sản phẩm */}
                                     {order.products.length > 0 && (
                                         <span className="ml-1 h-2 w-2 bg-primary rounded-full"></span>
                                     )}
@@ -671,10 +718,6 @@ export default function POSPage() {
                                     <span className="text-sm text-muted-foreground">Tạm tính:</span>
                                     <span className="font-medium">{currentOrder?.total.toLocaleString('vi-VN')}₫</span>
                                 </div>
-                                {/* <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-muted-foreground">Giảm giá:</span>
-                                    <span className="font-medium text-green-600 dark:text-green-400">0₫</span>
-                                </div> */}
                                 <hr className="my-3 border-border" />
                                 <div className="flex justify-between items-center">
                                     <span className="text-base font-semibold">Tổng cộng:</span>
