@@ -34,13 +34,13 @@ export async function middleware(request: NextRequest) {
     // Lấy token trực tiếp từ cookies trong middleware
     const token = request.cookies.get("notsapo-auth-token")?.value;
 
-    // console.log("🔍 Middleware token check:", {
-    //   hasToken: !!token,
-    //   tokenPreview: token ? `${token.substring(0, 20)}...` : null
-    // });
+    console.log("🔍 Middleware token check:", {
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : null
+    });
 
     if (!token) {
-      // console.log("❌ No token found, redirecting to login");
+      console.log("❌ No token found, redirecting to login");
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
       new TextEncoder().encode(process.env.JWT_SECRET)
     );
 
-    // console.log("✅ Token verified for user:", payload.adminId);
+    console.log("✅ Token verified for user:", payload.adminId);
 
     // Kiểm tra quyền truy cập cho API routes
     if (apiRoutes.some((route) => pathname.startsWith(route))) {

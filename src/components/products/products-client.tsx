@@ -4,67 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition, useCallback } from "react";
-import { toast } from "sonner";
-
 import ProductCard from "@/components/products/product-card";
-import { getProducts } from '@/actions/product.action';
-
-interface Inventory {
-    inventoryId: string;
-    variantId: string;
-    initialStock: number;
-    currentStock: number;
-    minStock: number;
-    maxStock: number;
-    warehouseLocation: string | null;
-    updatedAt: string;
-}
-
-interface Variant {
-    variantId: string;
-    productId: string;
-    sku: string;
-    barcode: string;
-    variantName: string;
-    weight: number;
-    weightUnit: string;
-    unit: string;
-    imageUrl: string | null;
-    retailPrice: number;
-    wholesalePrice: number;
-    importPrice: number;
-    taxApplied: boolean;
-    inputTax: number;
-    outputTax: number;
-    createdAt: string;
-    inventory: Inventory;
-}
-
-interface Product {
-    productId: string;
-    name: string;
-    description: string | null;
-    brand: string | null;
-    productType: string;
-    tags: string | null;
-    createdAt: string;
-    variants: Variant[];
-}
-
-interface ProductsData {
-    data: Product[];
-    pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-        hasNext: boolean;
-        hasPrev: boolean;
-    };
-}
+import AddProductDialog from "./new-product-dialog";
+import { useProductClientStore, type ProductsData } from "@/store/product/product-client-store";
 
 interface ProductsClientProps {
     initialData: ProductsData;
@@ -81,107 +23,25 @@ export default function ProductsClient({
     itemsPerPage,
     error: initialError
 }: ProductsClientProps) {
-    const router = useRouter();
-    const [isPending, startTransition] = useTransition();
-
-    const [data, setData] = useState<ProductsData>(initialData);
-    const [searchTerm, setSearchTerm] = useState(initialSearch);
-    const [currentPage, setCurrentPage] = useState(initialPage);
-    const [error, setError] = useState(initialError);
-
-    // Update URL without causing a full page reload
-    const updateURL = useCallback((page: number, search: string) => {
-        const params = new URLSearchParams();
-        params.set('page', page.toString());
-        params.set('limit', itemsPerPage.toString());
-        if (search) {
-            params.set('search', search);
-        }
-
-        router.replace(`/products?${params.toString()}`, { scroll: false });
-    }, [router, itemsPerPage]);
-
-    // Fetch data using server action
-    const fetchData = useCallback(async (page: number, search: string) => {
-        try {
-            setError(undefined);
-            const newData = await getProducts({ page, limit: itemsPerPage, search });
-            setData(newData as ProductsData);
-            setCurrentPage(page);
-            updateURL(page, search);
-            return newData;
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra';
-            setError(errorMessage);
-            toast.error(`Lỗi khi tải sản phẩm: ${errorMessage}`);
-            throw err;
-        }
-    }, [itemsPerPage, updateURL]);
-
-    // Handle search
-    const handleSearch = () => {
-        startTransition(async () => {
-            try {
-                await fetchData(1, searchTerm);
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (err) {
-                // Error already handled in fetchData
-            }
-        });
-    };
-
-    // Handle search input change
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value);
-    };
-
-    // Handle search on Enter key
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
-    };
-
-    // Handle page change
-    const handlePageChange = (page: number) => {
-        if (page >= 1 && page <= data.pagination.totalPages && !isPending) {
-            startTransition(async () => {
-                try {
-                    await fetchData(page, searchTerm);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                } catch (err) {
-                    // Error already handled in fetchData
-                }
-            });
-        }
-    };
-
-    const generatePageNumbers = () => {
-        const pages = [];
-        const maxVisiblePages = 5;
-        const totalPages = data.pagination.totalPages;
-
-        if (totalPages <= maxVisiblePages) {
-            for (let i = 1; i <= totalPages; i++) {
-                pages.push(i);
-            }
-        } else {
-            const halfVisible = Math.floor(maxVisiblePages / 2);
-            let startPage = Math.max(1, currentPage - halfVisible);
-            const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                pages.push(i);
-            }
-        }
-
-        return pages;
-    };
+    const {
+        data,
+        searchTerm,
+        currentPage,
+        error,
+        isPending,
+        handleSearch,
+        handleSearchChange,
+        handleKeyPress,
+        handlePageChange,
+        navigateToProduct,
+        generatePageNumbers
+    } = useProductClientStore({
+        initialData,
+        initialPage,
+        initialSearch,
+        itemsPerPage,
+        initialError
+    });
 
     const skeleton = (
         <CardContent>
@@ -193,12 +53,12 @@ export default function ProductsClient({
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Chưa có sản phẩm nào</h3>
                 <p className="text-sm mb-4">Hãy thêm sản phẩm đầu tiên của bạn</p>
-                <Link href="/products/create">
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
+                <AddProductDialog>
+                    <Button className="gap-2">
+                        <Plus className="h-4 w-4" />
                         Thêm sản phẩm
                     </Button>
-                </Link>
+                </AddProductDialog>
             </div>
         </CardContent>
     );
@@ -233,12 +93,7 @@ export default function ProductsClient({
                     <h1 className="text-3xl font-bold tracking-tight">
                         Danh sách sản phẩm
                     </h1>
-                    <Link href="/products/create">
-                        <Button className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            Thêm sản phẩm
-                        </Button>
-                    </Link>
+                    <AddProductDialog />
                 </div>
             </div>
 
@@ -306,11 +161,11 @@ export default function ProductsClient({
                     <Card>{skeleton}</Card>
                 ) : (
                     <div className="space-y-4">
-                        {data.data.map((product: Product) => (
+                        {data.data.map((product) => (
                             <ProductCard
                                 key={product.productId}
                                 product={product}
-                                onClick={() => router.push(`/products/${product.productId}`)}
+                                onClick={() => navigateToProduct(product.productId)}
                             />
                         ))}
                     </div>

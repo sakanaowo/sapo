@@ -2,7 +2,7 @@ import fs from 'fs';
 import XLSX from 'xlsx';
 
 // Đọc file Excel
-const workbook = XLSX.readFile('danh_sach_san_pham_06.07.2025_f6b462561d0688588322dae96843d4fd.xlsx');
+const workbook = XLSX.readFile('danh_sach_san_pham_27.07.2025_d89055d297bbbac248c8ea2357e0700b.xlsx');
 const sheet = workbook.Sheets['Xuất file sản phẩm'];
 const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 

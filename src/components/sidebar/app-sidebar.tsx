@@ -149,13 +149,18 @@ const data = {
                 },
             ],
         },
-    ],
-    projects: [
         {
-            name: "POS",
+            title: "POS",
             url: "/pos",
             icon: Store,
         },
+    ],
+    projects: [
+        // {
+        //     name: "POS",
+        //     url: "/pos",
+        //     icon: Store,
+        // },
         {
             name: "Cấu hình",
             url: "/settings",
