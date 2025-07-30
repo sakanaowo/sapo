@@ -34,10 +34,10 @@ export async function middleware(request: NextRequest) {
     // Lấy token trực tiếp từ cookies trong middleware
     const token = request.cookies.get("notsapo-auth-token")?.value;
 
-    console.log("🔍 Middleware token check:", {
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : null
-    });
+    // console.log("🔍 Middleware token check:", {
+    //   hasToken: !!token,
+    //   tokenPreview: token ? `${token.substring(0, 20)}...` : null
+    // });
 
     if (!token) {
       console.log("❌ No token found, redirecting to login");

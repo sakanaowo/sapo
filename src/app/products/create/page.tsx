@@ -1,10 +1,494 @@
-import Under_Construction from '@/app/under-construction'
-import React from 'react'
+"use client";
 
-function page() {
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, X, Plus, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Switch } from "@/components/ui/switch";
+import { useCreateProductStore } from "@/store/product/create-product-store";
+import { useEffect } from "react";
+
+export default function CreateProductPage() {
+    const router = useRouter();
+
+    // Zustand store
+    const {
+        formData,
+        images,
+        imagePreviews,
+        isSubmitting,
+        updateFormData,
+        // updateFormDataBatch,
+        addImages,
+        removeImage,
+        addUnitConversion,
+        updateUnitConversion,
+        removeUnitConversion,
+        setSubmitting,
+        resetForm,
+        syncInitialAndCurrentStock,
+    } = useCreateProductStore();
+
+    // Reset form when component unmounts
+    useEffect(() => {
+        return () => {
+            resetForm();
+        };
+    }, [resetForm]);
+
+    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files || []);
+        if (files.length > 0) {
+            addImages(files);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+
+        try {
+            console.log("Product data:", formData);
+            console.log("Images:", images);
+
+            // TODO: Implement actual API call here
+            // const result = await createProduct(formData, images);
+
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Reset form on success
+            resetForm();
+            router.push("/products");
+        } catch (error) {
+            console.error("Error creating product:", error);
+            // TODO: Show error toast/notification
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
-        <Under_Construction />
-    )
-}
+        <div className="min-h-screen bg-gray-50/50">
+            {/* Fixed Header */}
+            <div className="fixed top-0 left-0 right-0 z-50 border-b bg-white/95 backdrop-blur shadow-sm">
+                <div className="flex h-14 items-center justify-between px-6">
+                    <div className="flex items-center gap-3">
+                        <Link href="/products">
+                            <Button variant="ghost" size="sm">
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Back
+                            </Button>
+                        </Link>
+                        <h1 className="text-xl font-semibold">Add Product</h1>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => router.push("/products")}>
+                            Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? "Creating..." : "Add product"}
+                        </Button>
+                    </div>
+                </div>
+            </div>
 
-export default page
+            {/* Content */}
+            <div className="pt-14">
+                <div className="container mx-auto p-4 max-w-6xl">
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                        {/* Left Column - Main Info */}
+                        <div className="lg:col-span-2 space-y-4">
+
+                            {/* Thông tin chung & Variant */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-gray-50/50 to-white border-b border-gray-100">
+                                    <CardTitle className="text-lg text-gray-900">Thông tin sản phẩm</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 bg-white">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <Label htmlFor="productName" className="text-sm font-medium text-gray-700">Tên sản phẩm *</Label>
+                                            <Input
+                                                id="productName"
+                                                value={formData.name}
+                                                onChange={(e) => updateFormData('name', e.target.value)}
+                                                placeholder="Nhập tên sản phẩm"
+                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="variantName" className="text-sm font-medium text-gray-700">Tên biến thể *</Label>
+                                            <Input
+                                                id="variantName"
+                                                value={formData.variantName}
+                                                onChange={(e) => updateFormData('variantName', e.target.value)}
+                                                placeholder="VD: Size M, Màu đỏ..."
+                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="sku" className="text-sm font-medium text-gray-700">Mã SKU *</Label>
+                                            <Input
+                                                id="sku"
+                                                value={formData.sku}
+                                                onChange={(e) => updateFormData('sku', e.target.value)}
+                                                placeholder="Nhập mã SKU"
+                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="barcode" className="text-sm font-medium text-gray-700">Barcode</Label>
+                                            <Input
+                                                id="barcode"
+                                                value={formData.barcode}
+                                                onChange={(e) => updateFormData('barcode', e.target.value)}
+                                                placeholder="Nhập barcode"
+                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="unit" className="text-sm font-medium text-gray-700">Đơn vị tính</Label>
+                                            <Input
+                                                id="unit"
+                                                value={formData.unit}
+                                                onChange={(e) => updateFormData('unit', e.target.value)}
+                                                placeholder="VD: cái, hộp, kg..."
+                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="weight" className="text-sm font-medium text-gray-700">Khối lượng</Label>
+                                            <div className="flex gap-2 mt-1">
+                                                <Input
+                                                    id="weight"
+                                                    type="number"
+                                                    value={formData.weight}
+                                                    onChange={(e) => updateFormData('weight', parseFloat(e.target.value) || 0)}
+                                                    placeholder="0"
+                                                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                />
+                                                <Select value={formData.weightUnit} onValueChange={(value) => updateFormData('weightUnit', value)}>
+                                                    <SelectTrigger className="w-16 border-gray-300">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="g">g</SelectItem>
+                                                        <SelectItem value="kg">kg</SelectItem>
+                                                        <SelectItem value="lb">lb</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <Label htmlFor="description" className="text-sm font-medium text-gray-700">Mô tả</Label>
+                                            <Textarea
+                                                id="description"
+                                                value={formData.description}
+                                                onChange={(e) => updateFormData('description', e.target.value)}
+                                                placeholder="Nhập mô tả sản phẩm"
+                                                rows={2}
+                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Giá sản phẩm */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-green-50/50 to-white border-b border-green-100">
+                                    <CardTitle className="text-lg text-gray-900">Giá sản phẩm</CardTitle>
+                                </CardHeader>
+                                <CardContent className="bg-white">
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <Label htmlFor="retailPrice" className="text-sm font-medium text-gray-700">Giá bán lẻ *</Label>
+                                            <Input
+                                                id="retailPrice"
+                                                type="number"
+                                                value={formData.retailPrice}
+                                                onChange={(e) => updateFormData('retailPrice', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="importPrice" className="text-sm font-medium text-gray-700">Giá nhập</Label>
+                                            <Input
+                                                id="importPrice"
+                                                type="number"
+                                                value={formData.importPrice}
+                                                onChange={(e) => updateFormData('importPrice', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="wholesalePrice" className="text-sm font-medium text-gray-700">Giá buôn</Label>
+                                            <Input
+                                                id="wholesalePrice"
+                                                type="number"
+                                                value={formData.wholesalePrice}
+                                                onChange={(e) => updateFormData('wholesalePrice', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Đơn vị quy đổi */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-purple-50/50 to-white border-b border-purple-100">
+                                    <CardTitle className="text-lg text-gray-900 flex items-center justify-between">
+                                        Đơn vị quy đổi
+                                        <Button type="button" onClick={addUnitConversion} size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
+                                            <Plus className="h-4 w-4 mr-1" />
+                                            Thêm
+                                        </Button>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="bg-white">
+                                    {formData.unitConversions.length === 0 ? (
+                                        <div className="text-center py-8 bg-gray-50/50 rounded-lg border-2 border-dashed border-gray-200">
+                                            <p className="text-gray-500 text-sm">Chưa có đơn vị quy đổi nào</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {formData.unitConversions.map((conversion, index) => (
+                                                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50/80 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                                    <div className="flex-1">
+                                                        <Input
+                                                            value={conversion.unit}
+                                                            onChange={(e) => updateUnitConversion(index, 'unit', e.target.value)}
+                                                            placeholder="VD: thùng, lốc..."
+                                                            className="h-8 border-gray-300 bg-white"
+                                                        />
+                                                    </div>
+                                                    <div className="w-24">
+                                                        <Input
+                                                            type="number"
+                                                            value={conversion.conversionRate}
+                                                            onChange={(e) => updateUnitConversion(index, 'conversionRate', parseFloat(e.target.value) || 1)}
+                                                            placeholder="1"
+                                                            className="h-8 border-gray-300 bg-white"
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => removeUnitConversion(index)}
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Right Column - Additional Info */}
+                        <div className="space-y-4">
+
+                            {/* Ảnh sản phẩm */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-blue-50/50 to-white border-b border-blue-100">
+                                    <CardTitle className="text-lg text-gray-900">Ảnh sản phẩm</CardTitle>
+                                </CardHeader>
+                                <CardContent className="bg-white">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {/* Upload Area */}
+                                        <div className="aspect-square border-2 border-dashed border-blue-200 bg-blue-50/30 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all">
+                                            <label className="cursor-pointer flex flex-col items-center p-2">
+                                                <Upload className="h-6 w-6 text-blue-500 mb-1" />
+                                                <span className="text-xs text-blue-600 text-center font-medium">
+                                                    Tải ảnh
+                                                </span>
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*"
+                                                    onChange={handleImageUpload}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+
+                                        {/* Image Previews */}
+                                        {imagePreviews.slice(0, 3).map((preview, index) => (
+                                            <div key={index} className="relative aspect-square border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                                <Image
+                                                    src={preview}
+                                                    alt={`Preview ${index + 1}`}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 shadow-md"
+                                                    onClick={() => removeImage(index)}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {imagePreviews.length > 3 && (
+                                        <p className="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded text-center">
+                                            +{imagePreviews.length - 3} ảnh khác
+                                        </p>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Kho hàng */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-orange-50/50 to-white border-b border-orange-100">
+                                    <CardTitle className="text-lg text-gray-900">Kho hàng</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 bg-white">
+                                    <div>
+                                        <Label htmlFor="initialStock" className="text-sm font-medium text-gray-700">Tồn kho ban đầu</Label>
+                                        <Input
+                                            id="initialStock"
+                                            type="number"
+                                            value={formData.initialStock}
+                                            onChange={(e) => {
+                                                const value = parseFloat(e.target.value) || 0;
+                                                syncInitialAndCurrentStock(value);
+                                            }}
+                                            placeholder="0"
+                                            className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="warehouseLocation" className="text-sm font-medium text-gray-700">Vị trí kho</Label>
+                                        <Input
+                                            id="warehouseLocation"
+                                            value={formData.warehouseLocation}
+                                            onChange={(e) => updateFormData('warehouseLocation', e.target.value)}
+                                            placeholder="Kệ A1, Tầng 2..."
+                                            className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label htmlFor="minStock" className="text-sm font-medium text-gray-700">Tối thiểu</Label>
+                                            <Input
+                                                id="minStock"
+                                                type="number"
+                                                value={formData.minStock}
+                                                onChange={(e) => updateFormData('minStock', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="maxStock" className="text-sm font-medium text-gray-700">Tối đa</Label>
+                                            <Input
+                                                id="maxStock"
+                                                type="number"
+                                                value={formData.maxStock}
+                                                onChange={(e) => updateFormData('maxStock', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Thông tin bổ sung & Trạng thái */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50/50 to-white border-b border-indigo-100">
+                                    <CardTitle className="text-lg text-gray-900">Cài đặt</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 bg-white">
+                                    <div>
+                                        <Label htmlFor="brand" className="text-sm font-medium text-gray-700">Nhãn hiệu</Label>
+                                        <Input
+                                            id="brand"
+                                            value={formData.brand}
+                                            onChange={(e) => updateFormData('brand', e.target.value)}
+                                            placeholder="Tên nhãn hiệu"
+                                            className="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between p-3 bg-gray-50/80 border border-gray-200 rounded-lg">
+                                            <div>
+                                                <Label className="text-sm font-medium text-gray-900">Cho phép bán</Label>
+                                                <p className="text-xs text-gray-600">Bật để cho phép bán</p>
+                                            </div>
+                                            <Switch
+                                                checked={formData.allowSale}
+                                                onCheckedChange={(checked) => updateFormData('allowSale', checked)}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-3 bg-gray-50/80 border border-gray-200 rounded-lg">
+                                            <div>
+                                                <Label className="text-sm font-medium text-gray-900">Áp thuế</Label>
+                                                <p className="text-xs text-gray-600">Bật để áp thuế</p>
+                                            </div>
+                                            <Switch
+                                                checked={formData.taxApplied}
+                                                onCheckedChange={(checked) => updateFormData('taxApplied', checked)}
+                                            />
+                                        </div>
+
+                                        {formData.taxApplied && (
+                                            <div className="grid grid-cols-2 gap-2 pt-2 p-3 bg-indigo-50/50 border border-indigo-200 rounded-lg">
+                                                <div>
+                                                    <Label htmlFor="inputTax" className="text-xs font-medium text-gray-700">Thuế vào (%)</Label>
+                                                    <Input
+                                                        id="inputTax"
+                                                        type="number"
+                                                        value={formData.inputTax}
+                                                        onChange={(e) => updateFormData('inputTax', parseFloat(e.target.value) || 0)}
+                                                        placeholder="0"
+                                                        className="mt-1 h-8 border-gray-300 bg-white"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="outputTax" className="text-xs font-medium text-gray-700">Thuế ra (%)</Label>
+                                                    <Input
+                                                        id="outputTax"
+                                                        type="number"
+                                                        value={formData.outputTax}
+                                                        onChange={(e) => updateFormData('outputTax', parseFloat(e.target.value) || 0)}
+                                                        placeholder="0"
+                                                        className="mt-1 h-8 border-gray-300 bg-white"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}

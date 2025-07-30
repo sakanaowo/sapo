@@ -10,7 +10,8 @@ import { currentUser } from "@/actions/user.action";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Not SAPO"
+  title: "Not SAPO",
+  icons: "/e-commerce.jpg",
 };
 
 export default async function RootLayout({
@@ -23,7 +24,6 @@ export default async function RootLayout({
 
   const user = await currentUser();
   // console.log("Current User:", user);
-
 
 
   return (

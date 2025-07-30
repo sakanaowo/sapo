@@ -48,7 +48,7 @@ export async function getProducts({
         const cacheCount = await redis.get(countCacheKey);
         if (!cacheCount) {
             totalCount = await prisma.product.count({ where: whereClause });
-            await redis.setEx(countCacheKey, 3600 * 24 * 7, totalCount.toString());
+            await redis.setEx(countCacheKey, 3600, totalCount.toString());
         } else {
             totalCount = parseInt(cacheCount);
         }
@@ -108,8 +108,8 @@ export async function getProducts({
             },
         };
 
-        // Cache for 30 minutes
-        await redis.setEx(cacheKey, 3600 * 24 * 7, JSON.stringify(result));
+        // Cache for 60 minutes
+        await redis.setEx(cacheKey, 3600, JSON.stringify(result));
 
         return result;
     } catch (error) {
@@ -117,114 +117,6 @@ export async function getProducts({
         throw new Error(`Failed to fetch products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
-
-// export async function getProductById(id: string) {
-//     const cacheKey = `product-${id}-full`;
-
-//     try {
-//         const cached = await redis.get(cacheKey);
-//         if (cached) {
-//             return JSON.parse(cached);
-//         }
-
-//         const product = await prisma.product.findUnique({
-//             where: { productId: BigInt(id) },
-//             select: {
-//                 productId: true,
-//                 name: true,
-//                 description: true,
-//                 brand: true,
-//                 productType: true,
-//                 tags: true,
-//                 createdAt: true,
-//                 variants: {
-//                     select: {
-//                         variantId: true,
-//                         sku: true,
-//                         barcode: true,
-//                         variantName: true,
-//                         weight: true,
-//                         weightUnit: true,
-//                         unit: true,
-//                         imageUrl: true,
-//                         retailPrice: true,
-//                         wholesalePrice: true,
-//                         importPrice: true,
-//                         taxApplied: true,
-//                         inputTax: true,
-//                         outputTax: true,
-//                         createdAt: true,
-//                         inventory: {
-//                             select: {
-//                                 inventoryId: true,
-//                                 initialStock: true,
-//                                 currentStock: true,
-//                                 minStock: true,
-//                                 maxStock: true,
-//                                 warehouseLocation: true,
-//                                 updatedAt: true,
-//                             },
-//                         },
-//                         warranty: {
-//                             select: {
-//                                 warrantyId: true,
-//                                 expirationWarningDays: true,
-//                                 warrantyPolicy: true,
-//                                 createdAt: true,
-//                             },
-//                         },
-//                         fromConversions: {
-//                             select: {
-//                                 conversionId: true,
-//                                 toVariantId: true,
-//                                 conversionRate: true,
-//                                 createdAt: true,
-//                                 toVariant: {
-//                                     select: {
-//                                         variantId: true,
-//                                         variantName: true,
-//                                         sku: true,
-//                                         unit: true,
-//                                     },
-//                                 },
-//                             },
-//                         },
-//                         toConversions: {
-//                             select: {
-//                                 conversionId: true,
-//                                 fromVariantId: true,
-//                                 conversionRate: true,
-//                                 createdAt: true,
-//                                 fromVariant: {
-//                                     select: {
-//                                         variantId: true,
-//                                         variantName: true,
-//                                         sku: true,
-//                                         unit: true,
-//                                     },
-//                                 },
-//                             },
-//                         },
-//                     },
-//                 },
-//             },
-//         });
-
-//         if (!product) {
-//             throw new Error('Product not found');
-//         }
-
-//         const serializedProduct = JSON.parse(JSON.stringify(product, (key, value) =>
-//             typeof value === 'bigint' ? value.toString() : value
-//         ));
-
-//         await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
-//         return serializedProduct;
-//     } catch (error) {
-//         console.error('Error fetching product:', error);
-//         throw error;
-//     }
-// }
 
 export async function getProductById(id: string, selectFields?: string[]) {
     const cacheKey = `product-${id}-${selectFields ? selectFields.join('-') : 'full'}`;
@@ -351,8 +243,8 @@ export async function getProductById(id: string, selectFields?: string[]) {
             typeof value === 'bigint' ? value.toString() : value
         ));
 
-        // Cache for 1 day (adjust cache time based on data update frequency)
-        await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
+        // Cache for 1 hour (adjust cache time based on data update frequency)
+        await redis.setEx(cacheKey, 3600, JSON.stringify(serializedProduct));
         return serializedProduct;
     } catch (error) {
         console.error('Error fetching product:', error);
@@ -360,20 +252,15 @@ export async function getProductById(id: string, selectFields?: string[]) {
     }
 }
 
-export async function invalidateProductCache(id?: string) {
+export async function flushAllCache() {
     try {
-        if (id) {
-            const cacheKey = `product-${id}`;
-            await redis.del(cacheKey);
-        } else {
-            // Invalidate all product caches if needed
-            const keys = await redis.keys('product-*');
-            if (keys.length > 0) {
-                await redis.del(keys);
-            }
-        }
+        await redis.flushAll();
     } catch (error) {
-        console.error('Error invalidating product cache:', error);
+        console.error('Error flushing all cache:', error);
         throw error;
     }
 }
+
+export async function addOneProduct() { }
+
+export async function addManyProducts() { }
