@@ -4,19 +4,19 @@ import { toast } from 'sonner';
 import { getProducts } from '@/actions/product.action';
 
 interface Inventory {
-    inventoryId: string;
-    variantId: string;
-    initialStock: number;
+    inventoryId?: string;
+    variantId?: string;
+    initialStock?: number;
     currentStock: number;
-    minStock: number;
-    maxStock: number;
-    warehouseLocation: string | null;
-    updatedAt: string;
+    minStock?: number;
+    maxStock?: number;
+    warehouseLocation?: string | null;
+    updatedAt?: string;
 }
 
 interface Variant {
     variantId: string;
-    productId: string;
+    productId?: string;
     sku: string;
     barcode: string;
     variantName: string;
@@ -26,12 +26,12 @@ interface Variant {
     imageUrl: string | null;
     retailPrice: number;
     wholesalePrice: number;
-    importPrice: number;
-    taxApplied: boolean;
-    inputTax: number;
-    outputTax: number;
+    importPrice?: number;
+    taxApplied?: boolean;
+    inputTax?: number;
+    outputTax?: number;
     createdAt: string;
-    inventory: Inventory;
+    inventory?: Inventory;
 }
 
 interface Product {
@@ -97,6 +97,7 @@ export function useProductClientStore({
         try {
             setError(undefined);
             const newData = await getProducts({ page, limit: itemsPerPage, search });
+            console.log('Data in store before set:', JSON.stringify(newData, null, 2));
             setData(newData as ProductsData);
             setCurrentPage(page);
             updateURL(page, search);
@@ -180,6 +181,10 @@ export function useProductClientStore({
         router.push(`/products/${productId}`);
     }, [router]);
 
+    const navigateToEditProduct = useCallback((productId: string) => {
+        router.push(`/products/${productId}/edit`);
+    }, [router]);
+
     return {
         // State
         data,
@@ -194,6 +199,7 @@ export function useProductClientStore({
         handleKeyPress,
         handlePageChange,
         navigateToProduct,
+        navigateToEditProduct,
 
         // Computed
         generatePageNumbers,

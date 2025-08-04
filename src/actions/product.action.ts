@@ -48,7 +48,7 @@ export async function getProducts({
         const cacheCount = await redis.get(countCacheKey);
         if (!cacheCount) {
             totalCount = await prisma.product.count({ where: whereClause });
-            await redis.setEx(countCacheKey, 3600 * 24 * 7, totalCount.toString());
+            await redis.setEx(countCacheKey, 3600, totalCount.toString());
         } else {
             totalCount = parseInt(cacheCount);
         }
@@ -108,8 +108,8 @@ export async function getProducts({
             },
         };
 
-        // Cache for 30 minutes
-        await redis.setEx(cacheKey, 3600 * 24 * 7, JSON.stringify(result));
+        // Cache for 60 minutes
+        await redis.setEx(cacheKey, 3600, JSON.stringify(result));
 
         return result;
     } catch (error) {
@@ -117,114 +117,6 @@ export async function getProducts({
         throw new Error(`Failed to fetch products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
-
-// export async function getProductById(id: string) {
-//     const cacheKey = `product-${id}-full`;
-
-//     try {
-//         const cached = await redis.get(cacheKey);
-//         if (cached) {
-//             return JSON.parse(cached);
-//         }
-
-//         const product = await prisma.product.findUnique({
-//             where: { productId: BigInt(id) },
-//             select: {
-//                 productId: true,
-//                 name: true,
-//                 description: true,
-//                 brand: true,
-//                 productType: true,
-//                 tags: true,
-//                 createdAt: true,
-//                 variants: {
-//                     select: {
-//                         variantId: true,
-//                         sku: true,
-//                         barcode: true,
-//                         variantName: true,
-//                         weight: true,
-//                         weightUnit: true,
-//                         unit: true,
-//                         imageUrl: true,
-//                         retailPrice: true,
-//                         wholesalePrice: true,
-//                         importPrice: true,
-//                         taxApplied: true,
-//                         inputTax: true,
-//                         outputTax: true,
-//                         createdAt: true,
-//                         inventory: {
-//                             select: {
-//                                 inventoryId: true,
-//                                 initialStock: true,
-//                                 currentStock: true,
-//                                 minStock: true,
-//                                 maxStock: true,
-//                                 warehouseLocation: true,
-//                                 updatedAt: true,
-//                             },
-//                         },
-//                         warranty: {
-//                             select: {
-//                                 warrantyId: true,
-//                                 expirationWarningDays: true,
-//                                 warrantyPolicy: true,
-//                                 createdAt: true,
-//                             },
-//                         },
-//                         fromConversions: {
-//                             select: {
-//                                 conversionId: true,
-//                                 toVariantId: true,
-//                                 conversionRate: true,
-//                                 createdAt: true,
-//                                 toVariant: {
-//                                     select: {
-//                                         variantId: true,
-//                                         variantName: true,
-//                                         sku: true,
-//                                         unit: true,
-//                                     },
-//                                 },
-//                             },
-//                         },
-//                         toConversions: {
-//                             select: {
-//                                 conversionId: true,
-//                                 fromVariantId: true,
-//                                 conversionRate: true,
-//                                 createdAt: true,
-//                                 fromVariant: {
-//                                     select: {
-//                                         variantId: true,
-//                                         variantName: true,
-//                                         sku: true,
-//                                         unit: true,
-//                                     },
-//                                 },
-//                             },
-//                         },
-//                     },
-//                 },
-//             },
-//         });
-
-//         if (!product) {
-//             throw new Error('Product not found');
-//         }
-
-//         const serializedProduct = JSON.parse(JSON.stringify(product, (key, value) =>
-//             typeof value === 'bigint' ? value.toString() : value
-//         ));
-
-//         await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
-//         return serializedProduct;
-//     } catch (error) {
-//         console.error('Error fetching product:', error);
-//         throw error;
-//     }
-// }
 
 export async function getProductById(id: string, selectFields?: string[]) {
     const cacheKey = `product-${id}-${selectFields ? selectFields.join('-') : 'full'}`;
@@ -351,8 +243,8 @@ export async function getProductById(id: string, selectFields?: string[]) {
             typeof value === 'bigint' ? value.toString() : value
         ));
 
-        // Cache for 1 day (adjust cache time based on data update frequency)
-        await redis.setEx(cacheKey, 3600 * 24, JSON.stringify(serializedProduct));
+        // Cache for 1 hour (adjust cache time based on data update frequency)
+        await redis.setEx(cacheKey, 3600, JSON.stringify(serializedProduct));
         return serializedProduct;
     } catch (error) {
         console.error('Error fetching product:', error);
@@ -360,20 +252,170 @@ export async function getProductById(id: string, selectFields?: string[]) {
     }
 }
 
-export async function invalidateProductCache(id?: string) {
+export async function flushAllCache() {
     try {
-        if (id) {
-            const cacheKey = `product-${id}`;
-            await redis.del(cacheKey);
-        } else {
-            // Invalidate all product caches if needed
-            const keys = await redis.keys('product-*');
-            if (keys.length > 0) {
-                await redis.del(keys);
-            }
-        }
+        await redis.flushAll();
     } catch (error) {
-        console.error('Error invalidating product cache:', error);
+        console.error('Error flushing all cache:', error);
         throw error;
     }
 }
+
+export async function addOneProduct(data: {
+    name: string;
+    description: string;
+    brand: string;
+    productType: string;
+    tags: string[];
+    sku: string;
+    barcode?: string;
+    variantName: string;
+    weight: number;
+    weightUnit: string;
+    unit: string;
+    imageUrl?: string; // Thêm field này
+    retailPrice: number;
+    importPrice: number;
+    wholesalePrice: number;
+    initialStock: number;
+    currentStock: number;
+    minStock: number;
+    maxStock: number;
+    warehouseLocation: string;
+    unitConversions?: {
+        unit: string;
+        conversionRate: number;
+    }[];
+    allowSale: boolean;
+    taxApplied: boolean;
+    inputTax: number;
+    outputTax: number;
+}) {
+    try {
+        // Validation
+        if (!data.name.trim()) {
+            throw new Error('Tên sản phẩm không được để trống');
+        }
+        if (!data.sku.trim()) {
+            throw new Error('Mã SKU không được để trống');
+        }
+        if (!data.variantName.trim()) {
+            throw new Error('Tên biến thể không được để trống');
+        }
+        if (data.retailPrice <= 0) {
+            throw new Error('Giá bán lẻ phải lớn hơn 0');
+        }
+
+        // Check SKU duplicate
+        const existingSku = await prisma.productVariant.findUnique({
+            where: { sku: data.sku }
+        });
+        if (existingSku) {
+            throw new Error('Mã SKU đã tồn tại');
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Tạo Product và Variant chính
+            const product = await tx.product.create({
+                data: {
+                    name: data.name.trim(),
+                    description: data.description?.trim() || null,
+                    brand: data.brand?.trim() || null,
+                    productType: data.productType || "Sản phẩm thường",
+                    tags: data.tags.length > 0 ? data.tags.join(',') : null,
+                    variants: {
+                        create: {
+                            sku: data.sku.trim(),
+                            barcode: data.barcode?.trim() || null,
+                            variantName: data.variantName.trim(),
+                            weight: data.weight || 0,
+                            weightUnit: data.weightUnit || "g",
+                            unit: data.unit?.trim() || "",
+                            imageUrl: data.imageUrl || null, // Sử dụng imageUrl từ form
+                            retailPrice: data.retailPrice,
+                            wholesalePrice: data.wholesalePrice || 0,
+                            importPrice: data.importPrice || 0,
+                            taxApplied: data.taxApplied || false,
+                            inputTax: data.inputTax || 0,
+                            outputTax: data.outputTax || 0,
+                            inventory: {
+                                create: {
+                                    initialStock: data.initialStock || 0,
+                                    currentStock: data.currentStock || 0,
+                                    minStock: data.minStock || 0,
+                                    maxStock: data.maxStock || 0,
+                                    warehouseLocation: data.warehouseLocation?.trim() || null,
+                                },
+                            },
+                        },
+                    },
+                },
+                include: {
+                    variants: {
+                        include: {
+                            inventory: true,
+                        },
+                    },
+                },
+            });
+
+            const baseVariant = product.variants[0];
+
+            // Tạo Unit Conversions (chỉ tạo metadata conversion, không tạo variant mới)
+            if (data.unitConversions && data.unitConversions.length > 0) {
+                for (const conv of data.unitConversions) {
+                    if (conv.unit.trim() && conv.conversionRate > 0) {
+                        // Tạo variant cho đơn vị lớn hơn
+                        const convVariant = await tx.productVariant.create({
+                            data: {
+                                productId: product.productId,
+                                sku: `${data.sku}-${conv.unit.trim()}`,
+                                variantName: `${data.variantName} - ${conv.unit}`,
+                                weight: data.weight * conv.conversionRate,
+                                weightUnit: data.weightUnit,
+                                unit: conv.unit.trim(),
+                                retailPrice: data.retailPrice * conv.conversionRate,
+                                wholesalePrice: data.wholesalePrice * conv.conversionRate,
+                                importPrice: data.importPrice * conv.conversionRate,
+                                taxApplied: data.taxApplied,
+                                inputTax: data.inputTax,
+                                outputTax: data.outputTax,
+                                barcode: null,
+                                imageUrl: data.imageUrl || null, // Dùng chung ảnh
+                            },
+                        });
+
+                        // Tạo conversion relationship
+                        await tx.unitConversion.create({
+                            data: {
+                                fromVariantId: baseVariant.variantId,
+                                toVariantId: convVariant.variantId,
+                                conversionRate: conv.conversionRate,
+                            },
+                        });
+                    }
+                }
+            }
+
+            return product;
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        // Serialize BigInt
+        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        ));
+
+        return serialized;
+    } catch (error) {
+        console.error('Error creating product:', error);
+        throw new Error(`Failed to create product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+export async function addManyProducts() { }

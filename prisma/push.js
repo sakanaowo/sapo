@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import 'dotenv/config';
+import 'dotenv/config'; // Ensure dotenv is loaded to use environment variables
 import fs from 'fs';
 const prisma = new PrismaClient();
 
@@ -9,8 +9,16 @@ try {
     data = JSON.parse(fs.readFileSync('./products.json', 'utf8'));
 } catch (error) {
     console.error('Error reading products.json:', error.message);
-    console.error('Ensure products.json exists in the same directory.');
+    console.error('Ensure products.json exists in F:\\code\\VSCode\\sapo\\prisma');
     process.exit(1);
+}
+
+// Check for duplicate SKUs
+const skus = data.map(row => row['Mã SKU*']);
+const duplicates = skus.filter((sku, index) => skus.indexOf(sku) !== index);
+if (duplicates.length > 0) {
+    console.error('Duplicate SKUs in products.json:', duplicates);
+    throw new Error('Data contains duplicate SKUs. Please fix before importing.');
 }
 
 // Infer product name from variant name
@@ -62,76 +70,59 @@ function inferConversionRate(variants) {
     return conversions;
 }
 
-async function importNewData() {
+async function importData() {
     try {
-        console.log('Starting incremental data import...');
-        console.log('Number of records to process:', data.length);
+        console.log('Starting data deletion...');
+        await prisma.$transaction([
+            prisma.unitConversion.deleteMany(),
+            prisma.warranty.deleteMany(),
+            prisma.inventory.deleteMany(),
+            prisma.productVariant.deleteMany(),
+            prisma.product.deleteMany(),
+        ]);
+        console.log('Deleted all data from tables.');
 
+        console.log('Starting data import...');
+        console.log('Number of records:', data.length);
         const products = groupProducts(data);
         console.log('Number of product groups:', products.length);
 
-        let newProductsCount = 0;
-        let newVariantsCount = 0;
-        let skippedVariantsCount = 0;
-        let updatedInventoryCount = 0;
+        // Batch processing for products
+        const batchSize = 100;
+        for (let i = 0; i < products.length; i += batchSize) {
+            const batch = products.slice(i, i + batchSize);
+            await prisma.$transaction(
+                batch.map(product =>
+                    prisma.product.create({
+                        data: {
+                            name: product.name,
+                            productType: product.productType,
+                            description: null,
+                            brand: null,
+                            tags: null,
+                        },
+                    })
+                )
+            );
+        }
 
+        // Process variants, inventory, warranty, and conversions
         for (const product of products) {
-            // Check if product exists
-            let existingProduct = await prisma.product.findFirst({
+            const existingProduct = await prisma.product.findFirst({
                 where: { name: product.name },
             });
-
-            // Create product if it doesn't exist
             if (!existingProduct) {
-                existingProduct = await prisma.product.create({
-                    data: {
-                        name: product.name,
-                        productType: product.productType,
-                        description: null,
-                        brand: null,
-                        tags: null,
-                    },
-                });
-                newProductsCount++;
-                console.log(`Created new product: ${existingProduct.name} (ID: ${existingProduct.productId})`);
-            } else {
-                console.log(`Processing existing product: ${existingProduct.name} (ID: ${existingProduct.productId})`);
+                console.error(`Product not found after creation: ${product.name}`);
+                continue;
             }
+            console.log(`Processing product: ${existingProduct.name} (ID: ${existingProduct.productId})`);
 
-            // Process variants
             for (const variant of product.variants) {
                 if (!variant['Mã SKU*'] || !variant['Tên phiên bản sản phẩm']) {
                     console.warn(`Skipping row missing SKU or variant name: ${JSON.stringify(variant)}`);
                     continue;
                 }
 
-                // Check if variant already exists
-                const existingVariant = await prisma.productVariant.findUnique({
-                    where: { sku: variant['Mã SKU*'] },
-                });
-
-                if (existingVariant) {
-                    console.log(`Variant with SKU ${variant['Mã SKU*']} already exists - skipping`);
-                    skippedVariantsCount++;
-
-                    // Optionally update inventory if needed
-                    const newStock = parseFloat(variant['LC_CN1_Tồn kho ban đầu*'] || 0);
-                    if (newStock > 0) {
-                        await prisma.inventory.updateMany({
-                            where: { variantId: existingVariant.variantId },
-                            data: {
-                                currentStock: {
-                                    increment: newStock
-                                }
-                            }
-                        });
-                        updatedInventoryCount++;
-                        console.log(`Updated inventory for SKU ${variant['Mã SKU*']} - added ${newStock} units`);
-                    }
-                    continue;
-                }
-
-                // Create new variant
                 const createdVariant = await prisma.productVariant.create({
                     data: {
                         productId: existingProduct.productId,
@@ -150,10 +141,8 @@ async function importNewData() {
                         outputTax: parseFloat(variant['Thuế đầu ra (%)'] || 0),
                     },
                 });
-                newVariantsCount++;
-                console.log(`Created new variant: ${createdVariant.variantName} (SKU: ${createdVariant.sku})`);
+                console.log(`Created variant: ${createdVariant.variantName} (SKU: ${createdVariant.sku})`);
 
-                // Create inventory
                 await prisma.inventory.create({
                     data: {
                         variantId: createdVariant.variantId,
@@ -164,8 +153,8 @@ async function importNewData() {
                         warehouseLocation: variant['LC_CN1_Điểm lưu kho'],
                     },
                 });
+                console.log(`Created inventory for SKU: ${variant['Mã SKU*']}`);
 
-                // Create warranty
                 await prisma.warranty.create({
                     data: {
                         variantId: createdVariant.variantId,
@@ -173,56 +162,27 @@ async function importNewData() {
                         warrantyPolicy: variant['Chính sách bảo hành'],
                     },
                 });
+                console.log(`Created warranty for SKU: ${variant['Mã SKU*']}`);
             }
 
-            // Process unit conversions for new variants only
-            const newVariants = [];
-            for (const variant of product.variants) {
-                const existingVariant = await prisma.productVariant.findUnique({
-                    where: { sku: variant['Mã SKU*'] },
-                });
-                if (existingVariant) {
-                    newVariants.push(variant);
-                }
-            }
-
-            if (newVariants.length > 1) {
-                const conversions = inferConversionRate(newVariants);
-                for (const conv of conversions) {
-                    // Check if conversion already exists
-                    const fromVariant = await prisma.productVariant.findUnique({ where: { sku: conv.fromVariant } });
-                    const toVariant = await prisma.productVariant.findUnique({ where: { sku: conv.toVariant } });
-
-                    if (fromVariant && toVariant) {
-                        const existingConversion = await prisma.unitConversion.findFirst({
-                            where: {
-                                fromVariantId: fromVariant.variantId,
-                                toVariantId: toVariant.variantId,
-                            }
-                        });
-
-                        if (!existingConversion) {
-                            await prisma.unitConversion.create({
-                                data: {
-                                    fromVariantId: fromVariant.variantId,
-                                    toVariantId: toVariant.variantId,
-                                    conversionRate: conv.rate,
-                                },
-                            });
-                            console.log(`Created unit conversion from ${conv.fromVariant} to ${conv.toVariant}`);
-                        }
-                    }
+            const conversions = inferConversionRate(product.variants);
+            for (const conv of conversions) {
+                const fromVariant = await prisma.productVariant.findUnique({ where: { sku: conv.fromVariant } });
+                const toVariant = await prisma.productVariant.findUnique({ where: { sku: conv.toVariant } });
+                if (fromVariant && toVariant) {
+                    await prisma.unitConversion.create({
+                        data: {
+                            fromVariantId: fromVariant.variantId,
+                            toVariantId: toVariant.variantId,
+                            conversionRate: conv.rate,
+                        },
+                    });
+                    console.log(`Created unit conversion from ${conv.fromVariant} to ${conv.toVariant}`);
                 }
             }
         }
 
-        console.log('\n=== Import Summary ===');
-        console.log(`New products created: ${newProductsCount}`);
-        console.log(`New variants created: ${newVariantsCount}`);
-        console.log(`Skipped existing variants: ${skippedVariantsCount}`);
-        console.log(`Updated inventory records: ${updatedInventoryCount}`);
-        console.log('Incremental data import completed successfully!');
-
+        console.log('Data import successful!');
     } catch (error) {
         console.error('Error importing data:', error);
     } finally {
@@ -230,4 +190,4 @@ async function importNewData() {
     }
 }
 
-importNewData();
+importData();

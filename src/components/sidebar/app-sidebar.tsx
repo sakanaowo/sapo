@@ -16,7 +16,6 @@ import {
 import { NavMain } from "@/components/sidebar/nav-main"
 import { NavProjects } from "@/components/sidebar/nav-projects"
 import { NavUser } from "@/components/sidebar/nav-user"
-// import { TeamSwitcher } from "@/components/team-switcher"
 import {
     Sidebar,
     SidebarContent,
@@ -25,13 +24,13 @@ import {
     SidebarRail,
     SidebarTrigger
 } from "@/components/ui/sidebar"
-
+import { useAuth } from "@/hooks/useAuth"
 
 // Sample data for sidebar
 const data = {
     user: {
-        name: "Admin User",
-        email: "admin@example.com",
+        name: "Guest",
+        email: "guest@example.com",
         avatar: "https://i.pinimg.com/736x/57/f7/86/57f7862d043f8f27844387ec61c59ccb.jpg",
     },
     teams: [
@@ -77,26 +76,10 @@ const data = {
                     title: "Danh sách sản phẩm",
                     url: "/products",
                 },
-                // {
-                //     title: "Quản lý kho",
-                //     url: "/products/inventory",
-                // },
-                // {
-                //     title: "Đặt hàng nhập",
-                //     url: "/products/purchase-orders",
-                // },
                 {
                     title: "Nhập hàng",
                     url: "/products/purchase-orders",
                 },
-                // {
-                //     title: "Kiểm hàng",
-                //     url: "/products/inspect",
-                // },
-                // {
-                //     title: "Chuyển hàng",
-                //     url: "/products/transfer",
-                // },
                 {
                     title: "Nhà cung cấp",
                     url: "/products/suppliers",
@@ -156,11 +139,6 @@ const data = {
         },
     ],
     projects: [
-        // {
-        //     name: "POS",
-        //     url: "/pos",
-        //     icon: Store,
-        // },
         {
             name: "Cấu hình",
             url: "/settings",
@@ -168,24 +146,16 @@ const data = {
         },
     ],
 }
-interface AppSidebarProps {
-    user: {
-        adminId: string;
-        username: string;
-        email: string | null;
-        firstName: string | null;
-        lastName: string | null;
-        avatar: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    } | null;
-}
 
-export function AppSidebar({ user }: AppSidebarProps) {
+
+export function AppSidebar() {
+    const { user } = useAuth();
+
+    console.log("AppSidebar authUser:", user);
+
     return (
         <Sidebar collapsible="icon" >
             <SidebarHeader>
-                {/* <TeamSwitcher teams={data.teams} /> */}
                 <SidebarTrigger />
             </SidebarHeader>
             <SidebarContent>

@@ -3,7 +3,7 @@ import Under_Construction from '../under-construction'
 
 function OrdersPage() {
     return (
-        <Under_Construction />
+        <Under_Construction title="Orders" />
     )
 }
 

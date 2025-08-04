@@ -1,94 +1,75 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+// import { clerkMiddleware } from '@clerk/nextjs/server';
 
-export const dynamic = "force-dynamic";
+// export default clerkMiddleware();
 
-const publicRoutes = ["/login", "/api/auth", "/api/user/login"];
+// export const config = {
+//   matcher: [
+//     // Skip Next.js internals and all static files, unless found in search params
+//     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+//     // Always run for API routes
+//     '/(api|trpc)(.*)',
+//   ],
+// };
 
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
-const apiRoutes = ["/api/products", "/api/orders", "/api/pos"];
+const isPublicRoute = createRouteMatcher([
+  '/login(.*)',
+  '/api/webhook(.*)',
+  '/'
+]);
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+const isUploadThingRoute = createRouteMatcher(['/api/uploadthing(.*)']);
 
-  // console.log(`🔄 Middleware processing: ${pathname}`);
+export default clerkMiddleware(async (auth, req) => {
+  const { pathname } = req.nextUrl;
 
-  // Bỏ qua các file tĩnh và Next.js internals
+  // Allow public routes
+  if (isPublicRoute(req)) {
+    return NextResponse.next();
+  }
+
+  // Allow UploadThing routes
+  if (isUploadThingRoute(req)) {
+    return NextResponse.next();
+  }
+
+  // Bypass cho static files
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/.well-known") ||
-    pathname.includes(".")
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/.well-known') ||
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
-  // Cho phép truy cập route công khai
-  if (publicRoutes.some((route) => pathname.startsWith(route))) {
-    // console.log(`✅ Public route allowed: ${pathname}`);
-    return NextResponse.next();
-  }
-
+  // Protect all other routes
   try {
-    // Lấy token trực tiếp từ cookies trong middleware
-    const token = request.cookies.get("notsapo-auth-token")?.value;
+    const { userId } = await auth();
 
-    console.log("🔍 Middleware token check:", {
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : null
-    });
-
-    if (!token) {
-      console.log("❌ No token found, redirecting to login");
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
+    if (!userId) {
+      console.log('❌ No authenticated user, redirecting to login');
+      const loginUrl = new URL('/login', req.url);
+      loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Verify JWT token
-    if (!process.env.JWT_SECRET) {
-      console.error("❌ JWT_SECRET not configured");
-      throw new Error("JWT_SECRET not configured");
-    }
-
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(process.env.JWT_SECRET)
-    );
-
-    console.log("✅ Token verified for user:", payload.adminId);
-
-    // Kiểm tra quyền truy cập cho API routes
-    if (apiRoutes.some((route) => pathname.startsWith(route))) {
-      // Thêm user info vào headers để sử dụng trong API
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-user-adminId", payload.adminId as string);
-
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      });
-    }
-
+    console.log('✅ Authenticated user:', userId);
     return NextResponse.next();
   } catch (error) {
-    console.error("❌ Middleware authentication error:", error);
-
-    // Clear invalid token
-    const response = NextResponse.redirect(
-      new URL("/login?error=auth_failed", request.url)
-    );
-    response.cookies.delete("notsapo-auth-token");
-
-    return response;
+    console.error('Middleware auth error:', error);
+    const loginUrl = new URL('/login', req.url);
+    return NextResponse.redirect(loginUrl);
   }
-}
+});
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
   ],
 };

@@ -1,12 +1,42 @@
 
-import { LoginForm } from "@/components/login-form"
+import { SignInButton, SignUpButton } from '@clerk/nextjs';
+import { currentUser } from '@clerk/nextjs/server';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { redirect } from 'next/navigation';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+    // Kiểm tra nếu user đã đăng nhập thì redirect về dashboard
+    const user = await currentUser();
+
+    if (user) {
+        redirect('/dashboard');
+    }
+
     return (
-        <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-            <div className="flex w-full max-w-sm flex-col gap-6">
-                <LoginForm />
+        <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">
+            <div className="w-full max-w-md">
+                <Card>
+                    <CardHeader className="text-center">
+                        <CardTitle className="text-2xl font-bold">Chào mừng trở lại</CardTitle>
+                        <CardDescription>
+                            Đăng nhập vào tài khoản của bạn
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <SignInButton mode="modal">
+                            <Button className='w-full' variant="default">
+                                Login
+                            </Button>
+                        </SignInButton>
+                        <SignUpButton mode='modal'>
+                            <Button className='w-full mt-2' variant="outline">
+                                Sign Up
+                            </Button>
+                        </SignUpButton>
+                    </CardContent>
+                </Card>
             </div>
         </div>
-    )
+    );
 }

@@ -1,120 +1,99 @@
-"use server"
+"use server";
 
-import prisma from "@/lib/prisma";
-// import bcrypt from "bcryptjs";
-// import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
-import { jwtVerify, SignJWT } from "jose";
+import { auth, currentUser } from '@clerk/nextjs/server';
+import prisma from '@/lib/prisma';
 
-
-export async function currentUser() {
+export async function syncUser() {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('notsapo-auth-token')?.value;
+        const { userId } = await auth();
+        const clerkUser = await currentUser();
 
-        // console.log('🔍 Debug currentUser:');
-        // console.log('- Token exists:', !!token);
-        // console.log('- Token value:', token ? `${token.substring(0, 20)}...` : 'null');
-
-        if (!token) {
-            // console.log('❌ No token found');
+        if (!userId || !clerkUser) {
             return null;
         }
 
-        // Thêm validation cho JWT_SECRET
-        if (!process.env.JWT_SECRET) {
-            // console.error('❌ JWT_SECRET is not defined');
-            return null;
+        console.log('Syncing user:', userId);
+
+        // Check existing user
+        const existingUser = await prisma.admin.findUnique({
+            where: { clerkId: userId }
+        });
+
+        if (existingUser) {
+            console.log('User found:', existingUser.username);
+            return {
+                ...existingUser,
+                adminId: existingUser.adminId.toString(),
+            };
         }
 
-        const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET!));
-        // console.log('✅ Token decoded:', { adminId: payload.adminId });
-
-        const user = await prisma.admin.findUnique({
-            where: {
-                adminId: BigInt(payload.adminId as string)
+        // Create new user
+        const newUser = await prisma.admin.create({
+            data: {
+                clerkId: userId,
+                username: clerkUser.username ?? clerkUser.emailAddresses[0]?.emailAddress.split('@')[0] ?? `user_${userId.slice(-8)}`,
+                email: clerkUser.emailAddresses[0]?.emailAddress ?? '',
+                name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || null,
+                avatar: clerkUser.imageUrl ?? null,
             }
         });
 
-        // console.log('👤 User found:', !!user);
-        return user ? {
-            ...user,
-            adminId: user.adminId.toString()
-        } : null;
+        console.log('New user created:', newUser.username);
+        return {
+            ...newUser,
+            adminId: newUser.adminId.toString(),
+        };
+
     } catch (error) {
-        console.error('❌ Error in currentUser:', error);
+        console.error('Error syncing user from Clerk:', error);
         return null;
     }
 }
 
-export async function login(username: string, password: string) {
+export async function getUserById(clerkId: string) {
     try {
-        const admin = await prisma.admin.findFirst({
-            where: {
-                username: username,
-            },
-        });
-        // console.log("Admin found:", admin);
-
-        if (!admin) {
-            return {
-                success: false,
-                message: "User not found",
-            };
-        }
-
-        // const isValidPassword = await bcrypt.compare(password, admin.password);
-        const isValidPassword = password === admin.password; // For simplicity, assuming password is stored in plain text
-        if (!isValidPassword) {
-            return {
-                success: false,
-                message: "Invalid password",
-            };
-        }
-
-        const token = await new SignJWT({ adminId: admin.adminId.toString() })
-            .setProtectedHeader({ alg: 'HS256' })
-            .setExpirationTime('365d')
-            .sign(new TextEncoder().encode(process.env.JWT_SECRET!));
-
-        // console.log("🔐 Token created:", token ? "✅" : "❌");
-
-        // Set cookie
-        const cookieStore = await cookies();
-        cookieStore.set("notsapo-auth-token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
+        const user = await prisma.admin.findUnique({
+            where: { clerkId }
         });
 
-        // console.log("🍪 Cookie set successfully");
+        if (!user) return null;
 
         return {
-            success: true,
-            message: "Đăng nhập thành công"
+            ...user,
+            adminId: user.adminId.toString(),
         };
     } catch (error) {
-        console.error("Login error:", error);
-        return {
-            success: false,
-            message: "Có lỗi xảy ra trong quá trình đăng nhập"
-        };
+        console.error('Error getting user by ID:', error);
+        return null;
     }
 }
 
-export async function logout() {
+export async function updateUserProfile(data: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+}) {
     try {
-        (await cookies()).delete("notsapo-auth-token");
+        const { userId } = await auth();
+        if (!userId) return { success: false, message: 'Not authenticated' };
+
+        const user = await prisma.admin.update({
+            where: { clerkId: userId },
+            data: {
+                ...data,
+                updatedAt: new Date(),
+            }
+        });
+
         return {
             success: true,
-            message: "Đăng xuất thành công"
+            user: {
+                ...user,
+                adminId: user.adminId.toString(),
+            }
         };
     } catch (error) {
-        console.error("Error during logout:", error);
-        return {
-            success: false,
-            message: "Có lỗi xảy ra trong quá trình đăng xuất"
-        };
+        console.error('Error updating user profile:', error);
+        return { success: false, message: 'Update failed' };
     }
 }
