@@ -54,6 +54,40 @@ export async function getProducts({
         }
 
         // Get products with only necessary fields
+        // const products = await prisma.product.findMany({
+        //     where: whereClause,
+        //     select: {
+        //         productId: true,
+        //         name: true,
+        //         productType: true,
+        //         brand: true,
+        //         variants: {
+        //             select: {
+        //                 variantId: true,
+        //                 variantName: true,
+        //                 sku: true,
+        //                 barcode: true,
+        //                 weight: true,
+        //                 weightUnit: true,
+        //                 unit: true,
+        //                 imageUrl: true,
+        //                 retailPrice: true,
+        //                 wholesalePrice: true,
+        //                 createdAt: true,
+        //                 inventory: {
+        //                     select: {
+        //                         currentStock: true,
+        //                     },
+        //                 },
+        //             },
+        //         },
+        //     },
+        //     skip: (page - 1) * limit,
+        //     take: limit,
+        //     orderBy: {
+        //         createdAt: 'desc',
+        //     },
+        // });
         const products = await prisma.product.findMany({
             where: whereClause,
             select: {
@@ -61,18 +95,14 @@ export async function getProducts({
                 name: true,
                 productType: true,
                 brand: true,
+                createdAt: true,
                 variants: {
                     select: {
                         variantId: true,
                         variantName: true,
                         sku: true,
-                        barcode: true,
-                        weight: true,
-                        weightUnit: true,
-                        unit: true,
                         imageUrl: true,
                         retailPrice: true,
-                        wholesalePrice: true,
                         createdAt: true,
                         inventory: {
                             select: {
