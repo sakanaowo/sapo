@@ -3,10 +3,14 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useClerk, useUser } from '@clerk/nextjs';
 
 export function useSidebarActions() {
     const router = useRouter();
     const { theme, setTheme } = useTheme();
+    const { user } = useUser();
+    console.log("User from sidebar store:", user);
+    const { signOut } = useClerk();
 
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
@@ -32,8 +36,14 @@ export function useSidebarActions() {
 
         setIsLoggingOut(true);
         try {
-            toast.success('Đăng xuất thành công');
+            if (!user) {
+                router.push("/login");
+                return;
+            }
+
+            await signOut();
             router.push("/login");
+            toast.success('Đăng xuất thành công');
         } catch (error) {
             console.error("Logout error:", error);
             toast.error("Có lỗi xảy ra khi đăng xuất");
