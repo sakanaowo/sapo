@@ -9,7 +9,7 @@ export function useSidebarActions() {
     const router = useRouter();
     const { theme, setTheme } = useTheme();
     const { user } = useUser();
-    console.log("User from sidebar store:", user);
+    // console.log("User from sidebar store:", user);
     const { signOut } = useClerk();
 
     const [isLoggingOut, setIsLoggingOut] = useState(false);
