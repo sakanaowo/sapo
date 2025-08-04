@@ -4,7 +4,7 @@ import Under_Construction from "@/app/under-construction"
 function EditProduct() {
     return (
         <>
-            <Under_Construction />
+            <Under_Construction title="Edit Product" />
         </>
     )
 }

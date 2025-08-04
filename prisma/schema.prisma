@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  // output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -11,13 +10,12 @@ datasource db {
 model Admin {
   adminId   BigInt   @id @default(autoincrement())
   username  String   @unique
-  password  String
-  email     String?  @unique
-  firstName String?
-  lastName  String?
+  email     String   @unique
   avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+  clerkId   String   @unique
+  name      String?
 
   @@index([username])
   @@map("admin")

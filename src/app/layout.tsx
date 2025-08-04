@@ -3,15 +3,16 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import { cookies } from "next/headers";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { currentUser } from "@/actions/user.action";
+import { AuthSync } from "@/components/AuthSync";
+
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Not SAPO",
-  icons: "/e-commerce.jpg",
+  icons: "/shopping-bag.png",
 };
 
 export default async function RootLayout({
@@ -19,32 +20,29 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const defaultOpen = cookieStore.get("sidebar-open")?.value === "true";
-
-  const user = await currentUser();
-  // console.log("Current User:", user);
-
 
   return (
-    <html lang="vi" suppressHydrationWarning>
-      <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange>
-          <SidebarProvider defaultOpen={defaultOpen}>
-            <AppSidebar user={user} />
-            <SidebarInset>
-              <main className="flex-1 overflow-auto">
-                {children}
-              </main>
-            </SidebarInset>
-            <Toaster />
-          </SidebarProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="vi" suppressHydrationWarning>
+        <body>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange>
+            <AuthSync />
+            <SidebarProvider>
+              <AppSidebar />
+              <SidebarInset>
+                <main className="flex-1 overflow-auto">
+                  {children}
+                </main>
+              </SidebarInset>
+              <Toaster />
+            </SidebarProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

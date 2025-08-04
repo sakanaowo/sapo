@@ -35,24 +35,88 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
-import { useSidebarStore, type User } from "@/store/sidebar-store"
+import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { toast } from "sonner"
 
-export function NavUser({ user }: { user: User | null }) {
+type User = {
+    adminId: string;
+    username: string;
+    email: string | null;
+    name: string | null;
+    avatar: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+} | null;
+
+export function NavUser({ user }: { user?: User }) {
     const { isMobile } = useSidebar();
-    const {
-        getUserDisplayName,
-        getUserEmail,
-        getUserAvatar,
-        getUserInitials,
-        isAuthenticated,
-        theme,
-        handleThemeChange,
-        handleAccountClick,
-        handleLogout,
-        handleLoginClick,
-        isLoggingOut,
-        isNavigating,
-    } = useSidebarStore({ user });
+    const { theme, setTheme } = useTheme();
+    const router = useRouter();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);
+
+    const getUserDisplayName = () => {
+        if (!user) return "Guest";
+        return user.username || "Unknown User";
+    };
+
+    const getUserEmail = () => {
+        if (!user) return "";
+        return user.email || "";
+    };
+
+    const getUserAvatar = () => {
+        if (!user) return '/unauth-avatar.jpg';
+        return user.avatar || '/avatar.svg';
+    };
+
+    const getUserInitials = () => {
+        if (!user) return "G";
+        if (user.name) {
+            return user.name.charAt(0).toUpperCase();
+        }
+        if (user.username) {
+            return user.username.charAt(0).toUpperCase();
+        }
+        return "U";
+    };
+
+    const handleThemeChange = (newTheme: string) => {
+        setTheme(newTheme);
+        toast.success(`Đã chuyển sang theme ${newTheme === 'light' ? 'sáng' : newTheme === 'dark' ? 'tối' : 'hệ thống'}`);
+    };
+
+    const handleAccountClick = () => {
+        if (isNavigating) return;
+        setIsNavigating(true);
+        router.push("/account");
+        setTimeout(() => setIsNavigating(false), 500);
+    };
+
+    const handleLoginClick = () => {
+        if (isNavigating) return;
+        setIsNavigating(true);
+        router.push("/login");
+        setTimeout(() => setIsNavigating(false), 500);
+    };
+
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        try {
+            // Simple logout - just redirect to login
+
+            toast.success('Đăng xuất thành công');
+            router.push("/login");
+        } catch (error) {
+            console.error("Logout error:", error);
+            toast.error("Có lỗi xảy ra khi đăng xuất");
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     const getThemeIcon = (themeValue: string) => {
         switch (themeValue) {
@@ -63,6 +127,10 @@ export function NavUser({ user }: { user: User | null }) {
             default:
                 return <Monitor className="h-4 w-4" />;
         }
+    };
+
+    const isAuthenticated = () => {
+        return user !== null && user?.adminId !== undefined;
     };
 
     return (
@@ -95,7 +163,7 @@ export function NavUser({ user }: { user: User | null }) {
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                        className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
                         side={isMobile ? "bottom" : "right"}
                         align="end"
                         sideOffset={4}

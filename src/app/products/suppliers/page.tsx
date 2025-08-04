@@ -3,7 +3,7 @@ import React from 'react'
 
 function page() {
     return (
-        <Under_Construction />
+        <Under_Construction title={'IDK'} />
     )
 }
 

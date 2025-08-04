@@ -261,6 +261,161 @@ export async function flushAllCache() {
     }
 }
 
-export async function addOneProduct() { }
+export async function addOneProduct(data: {
+    name: string;
+    description: string;
+    brand: string;
+    productType: string;
+    tags: string[];
+    sku: string;
+    barcode?: string;
+    variantName: string;
+    weight: number;
+    weightUnit: string;
+    unit: string;
+    imageUrl?: string; // Thêm field này
+    retailPrice: number;
+    importPrice: number;
+    wholesalePrice: number;
+    initialStock: number;
+    currentStock: number;
+    minStock: number;
+    maxStock: number;
+    warehouseLocation: string;
+    unitConversions?: {
+        unit: string;
+        conversionRate: number;
+    }[];
+    allowSale: boolean;
+    taxApplied: boolean;
+    inputTax: number;
+    outputTax: number;
+}) {
+    try {
+        // Validation
+        if (!data.name.trim()) {
+            throw new Error('Tên sản phẩm không được để trống');
+        }
+        if (!data.sku.trim()) {
+            throw new Error('Mã SKU không được để trống');
+        }
+        if (!data.variantName.trim()) {
+            throw new Error('Tên biến thể không được để trống');
+        }
+        if (data.retailPrice <= 0) {
+            throw new Error('Giá bán lẻ phải lớn hơn 0');
+        }
 
+        // Check SKU duplicate
+        const existingSku = await prisma.productVariant.findUnique({
+            where: { sku: data.sku }
+        });
+        if (existingSku) {
+            throw new Error('Mã SKU đã tồn tại');
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Tạo Product và Variant chính
+            const product = await tx.product.create({
+                data: {
+                    name: data.name.trim(),
+                    description: data.description?.trim() || null,
+                    brand: data.brand?.trim() || null,
+                    productType: data.productType || "Sản phẩm thường",
+                    tags: data.tags.length > 0 ? data.tags.join(',') : null,
+                    variants: {
+                        create: {
+                            sku: data.sku.trim(),
+                            barcode: data.barcode?.trim() || null,
+                            variantName: data.variantName.trim(),
+                            weight: data.weight || 0,
+                            weightUnit: data.weightUnit || "g",
+                            unit: data.unit?.trim() || "",
+                            imageUrl: data.imageUrl || null, // Sử dụng imageUrl từ form
+                            retailPrice: data.retailPrice,
+                            wholesalePrice: data.wholesalePrice || 0,
+                            importPrice: data.importPrice || 0,
+                            taxApplied: data.taxApplied || false,
+                            inputTax: data.inputTax || 0,
+                            outputTax: data.outputTax || 0,
+                            inventory: {
+                                create: {
+                                    initialStock: data.initialStock || 0,
+                                    currentStock: data.currentStock || 0,
+                                    minStock: data.minStock || 0,
+                                    maxStock: data.maxStock || 0,
+                                    warehouseLocation: data.warehouseLocation?.trim() || null,
+                                },
+                            },
+                        },
+                    },
+                },
+                include: {
+                    variants: {
+                        include: {
+                            inventory: true,
+                        },
+                    },
+                },
+            });
+
+            const baseVariant = product.variants[0];
+
+            // Tạo Unit Conversions (chỉ tạo metadata conversion, không tạo variant mới)
+            if (data.unitConversions && data.unitConversions.length > 0) {
+                for (const conv of data.unitConversions) {
+                    if (conv.unit.trim() && conv.conversionRate > 0) {
+                        // Tạo variant cho đơn vị lớn hơn
+                        const convVariant = await tx.productVariant.create({
+                            data: {
+                                productId: product.productId,
+                                sku: `${data.sku}-${conv.unit.trim()}`,
+                                variantName: `${data.variantName} - ${conv.unit}`,
+                                weight: data.weight * conv.conversionRate,
+                                weightUnit: data.weightUnit,
+                                unit: conv.unit.trim(),
+                                retailPrice: data.retailPrice * conv.conversionRate,
+                                wholesalePrice: data.wholesalePrice * conv.conversionRate,
+                                importPrice: data.importPrice * conv.conversionRate,
+                                taxApplied: data.taxApplied,
+                                inputTax: data.inputTax,
+                                outputTax: data.outputTax,
+                                barcode: null,
+                                imageUrl: data.imageUrl || null, // Dùng chung ảnh
+                            },
+                        });
+
+                        // Tạo conversion relationship
+                        await tx.unitConversion.create({
+                            data: {
+                                fromVariantId: baseVariant.variantId,
+                                toVariantId: convVariant.variantId,
+                                conversionRate: conv.conversionRate,
+                            },
+                        });
+                    }
+                }
+            }
+
+            return product;
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        // Serialize BigInt
+        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        ));
+
+        return serialized;
+    } catch (error) {
+        console.error('Error creating product:', error);
+        throw new Error(`Failed to create product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
 export async function addManyProducts() { }
