@@ -153,17 +153,6 @@ export default function ProductsClient({
                         />
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                            Status
-                        </Button>
-                        <Button variant="outline" size="sm">
-                            Category
-                        </Button>
-                        <Button variant="outline" size="sm">
-                            Filter
-                        </Button>
-                    </div>
                 </div>
 
                 {/* Error display */}

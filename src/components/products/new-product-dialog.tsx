@@ -36,14 +36,17 @@ export default function AddProductDialog({
 
     const handleBulkImport = () => {
         handleOpenChange(false);
-        router.push('/products/import');
+        // router.push('/products/import');
+        // TODO: Implement bulk import logic
+        alert('Chức năng import sản phẩm từ file chưa được triển khai.');
+        // This is a placeholder for the actual import functionality
     };
 
     const handleDownloadTemplate = () => {
         // Logic để download template Excel/CSV
         const link = document.createElement('a');
-        link.href = '/templates/product-import-template.xlsx';
-        link.download = 'mau-import-san-pham.xlsx';
+        link.href = '/templates/import-goods-template.xlsx';
+        link.download = 'import-goods-template.xlsx';
         link.click();
     };
 
@@ -84,9 +87,9 @@ export default function AddProductDialog({
                         {/* Template download */}
                         <Button
                             onClick={handleDownloadTemplate}
-                            variant="ghost"
+                            variant="default"
                             size="sm"
-                            className="w-full gap-2 text-xs"
+                            className="w-full gap-2 text-xs bg-blue-700"
                         >
                             <FileSpreadsheet className="h-3 w-3" />
                             Tải xuống mẫu import
