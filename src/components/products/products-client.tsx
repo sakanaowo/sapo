@@ -49,6 +49,17 @@ export default function ProductsClient({
         initialError
     });
 
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value);
+    }
+
+
+
     const getProductImage = (product: Product) => {
         if (product.variants[0].imageUrl) {
             return product.variants[0].imageUrl
@@ -253,7 +264,7 @@ export default function ProductsClient({
                                                 {getStockBadge(product.variants[0].inventory?.currentStock || 0)}
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {product.variants[0].retailPrice?.toLocaleString() || '0'} VND
+                                                {formatCurrency(product.variants[0].retailPrice)}
                                             </TableCell>
                                             <TableCell>
                                                 {formatDate(product.variants[0].createdAt)}
