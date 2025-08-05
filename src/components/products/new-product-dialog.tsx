@@ -38,7 +38,6 @@ export default function AddProductDialog({
         handleOpenChange(false);
         // router.push('/products/import');
         // TODO: Implement bulk import logic
-        alert('Chức năng import sản phẩm từ file chưa được triển khai.');
         // This is a placeholder for the actual import functionality
     };
 
@@ -111,7 +110,7 @@ export default function AddProductDialog({
                     {/* Tạo thủ công */}
                     <Button
                         onClick={handleManualAdd}
-                        variant="outline"
+                        variant="default"
                         className="w-full h-20 flex-col gap-2"
                     >
                         <Edit className="h-6 w-6 text-green-600" />

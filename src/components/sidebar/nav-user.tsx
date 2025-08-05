@@ -36,20 +36,11 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useSidebarActions } from "@/store/sidebar-store"
+import { useAuth } from "@/hooks/useAuth"
 
-
-type User = {
-    adminId: string;
-    username: string;
-    email: string | null;
-    name: string | null;
-    avatar: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-} | null;
-
-export function NavUser({ user }: { user?: User }) {
+export function NavUser() {
     const { isMobile } = useSidebar();
+    const { user, isLoading } = useAuth();
 
     const {
         theme,
@@ -62,21 +53,24 @@ export function NavUser({ user }: { user?: User }) {
     } = useSidebarActions();
 
     const getUserDisplayName = () => {
+        if (isLoading) return "Loading...";
         if (!user) return "Guest";
         return user.username || "Unknown User";
     };
 
     const getUserEmail = () => {
+        if (isLoading) return "Loading...";
         if (!user) return "";
         return user.email || "";
     };
 
     const getUserAvatar = () => {
-        if (!user) return '/unauth-avatar.jpg';
+        if (!user || isLoading) return '/unauth-avatar.jpg';
         return user.avatar || '/avatar.svg';
     };
 
     const getUserInitials = () => {
+        if (isLoading) return "...";
         if (!user) return "G";
         if (user.name) {
             return user.name.charAt(0).toUpperCase();
@@ -99,6 +93,7 @@ export function NavUser({ user }: { user?: User }) {
     };
 
     const isAuthenticated = () => {
+        if (isLoading) return false;
         return user !== null && user?.adminId !== undefined;
     };
 
@@ -187,7 +182,7 @@ export function NavUser({ user }: { user?: User }) {
                                 </DropdownMenuSubContent>
                             </DropdownMenuSub>
 
-                            <DropdownMenuItem>
+                            <DropdownMenuItem disabled={isLoading}>
                                 <Settings className="h-4 w-4" />
                                 <a href="/settings">Settings</a>
                             </DropdownMenuItem>
@@ -199,7 +194,7 @@ export function NavUser({ user }: { user?: User }) {
                             <DropdownMenuGroup>
                                 <DropdownMenuItem
                                     onClick={handleAccountClick}
-                                    disabled={isNavigating}
+                                    disabled={isNavigating || isLoading}
                                 >
                                     <BadgeCheck className="h-4 w-4" />
                                     Account

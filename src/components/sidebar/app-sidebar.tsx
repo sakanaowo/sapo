@@ -14,7 +14,6 @@ import {
 } from "lucide-react"
 
 import { NavMain } from "@/components/sidebar/nav-main"
-// import { NavProjects } from "@/components/sidebar/nav-projects"
 import { NavUser } from "@/components/sidebar/nav-user"
 import {
     Sidebar,
@@ -22,9 +21,9 @@ import {
     SidebarFooter,
     SidebarHeader,
     SidebarRail,
-    SidebarTrigger
+    SidebarTrigger,
+    useSidebar
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/hooks/useAuth"
 
 // Sample data for sidebar
 const data = {
@@ -149,21 +148,26 @@ const data = {
 
 
 export function AppSidebar() {
-    const { user } = useAuth();
-
-    console.log("AppSidebar authUser:", user);
+    const { toggleSidebar } = useSidebar();
 
     return (
         <Sidebar collapsible="icon" >
             <SidebarHeader>
                 <SidebarTrigger />
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent
+                className="cursor-pointer"
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                        toggleSidebar();
+                    }
+                }}
+            >
                 <NavMain items={data.navMain} />
                 {/* <NavProjects projects={data.projects} /> */}
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={user} />
+                <NavUser />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>

@@ -4,7 +4,6 @@ import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthSync } from "@/components/AuthSync";
 
 import { ClerkProvider } from "@clerk/nextjs";
 
@@ -30,7 +29,6 @@ export default async function RootLayout({
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange>
-            <AuthSync />
             <SidebarProvider>
               <AppSidebar />
               <SidebarInset>
