@@ -111,10 +111,9 @@ export default function CreateProductPage() {
                         <Link href="/products">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back
                             </Button>
                         </Link>
-                        <h1 className="text-xl font-semibold">Add Product</h1>
+                        <h1 className="text-xl font-semibold">Thêm sản phẩm</h1>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => router.push("/products")}>
@@ -338,7 +337,7 @@ export default function CreateProductPage() {
                                 </CardHeader>
                                 <CardContent className="bg-white p-4">
                                     <ImageUpload
-                                        endpoint="postImage"
+                                        endpoint="productImageUploader"
                                         value={formData.imageUrl}
                                         onChange={(url) => updateFormData('imageUrl', url)}
                                     />

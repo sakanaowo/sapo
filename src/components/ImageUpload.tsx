@@ -7,7 +7,7 @@ import { toast } from "sonner";
 interface ImageUploadProps {
     onChange: (url: string) => void;
     value: string;
-    endpoint: "postImage";
+    endpoint: "productImageUploader";
 }
 
 function ImageUpload({ endpoint, onChange, value }: ImageUploadProps) {
@@ -29,11 +29,15 @@ function ImageUpload({ endpoint, onChange, value }: ImageUploadProps) {
         <UploadDropzone
             endpoint={endpoint}
             onClientUploadComplete={(res) => {
+                console.log("Upload complete:", res); // Log này sẽ hiện trong browser
                 onChange(res?.[0].url);
             }}
             onUploadError={(error: Error) => {
-                console.log(error);
+                console.log("Upload error:", error); // Log này cũng hiện trong browser
                 toast.error("Failed to upload image");
+            }}
+            onUploadBegin={() => {
+                console.log("Upload started"); // Log khi bắt đầu upload
             }}
         />
     );
