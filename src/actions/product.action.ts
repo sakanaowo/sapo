@@ -53,41 +53,6 @@ export async function getProducts({
             totalCount = parseInt(cacheCount);
         }
 
-        // Get products with only necessary fields
-        // const products = await prisma.product.findMany({
-        //     where: whereClause,
-        //     select: {
-        //         productId: true,
-        //         name: true,
-        //         productType: true,
-        //         brand: true,
-        //         variants: {
-        //             select: {
-        //                 variantId: true,
-        //                 variantName: true,
-        //                 sku: true,
-        //                 barcode: true,
-        //                 weight: true,
-        //                 weightUnit: true,
-        //                 unit: true,
-        //                 imageUrl: true,
-        //                 retailPrice: true,
-        //                 wholesalePrice: true,
-        //                 createdAt: true,
-        //                 inventory: {
-        //                     select: {
-        //                         currentStock: true,
-        //                     },
-        //                 },
-        //             },
-        //         },
-        //     },
-        //     skip: (page - 1) * limit,
-        //     take: limit,
-        //     orderBy: {
-        //         createdAt: 'desc',
-        //     },
-        // });
         const products = await prisma.product.findMany({
             where: whereClause,
             select: {
@@ -446,6 +411,24 @@ export async function addOneProduct(data: {
     } catch (error) {
         console.error('Error creating product:', error);
         throw new Error(`Failed to create product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+export async function deleteProductById(productId: string) {
+    try {
+        const deleted = await prisma.product.delete({
+            where: { productId: BigInt(productId) }
+        })
+        return {
+            success: true,
+            message: "Product deleted successfully",
+            data: deleted
+        }
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        return {
+            success: false,
+            message: `Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }
     }
 }
 export async function addManyProducts() { }

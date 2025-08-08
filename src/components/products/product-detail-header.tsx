@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Edit } from 'lucide-react';
+import { ArrowLeft, Edit } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import DeleteProductButton from './DeleteProductButton';
 
 
 interface ProductDetailHeaderProps {
@@ -14,15 +15,8 @@ interface ProductDetailHeaderProps {
 }
 
 const ProductDetailHeader: React.FC<ProductDetailHeaderProps> = ({ product }) => {
-    const router = useRouter();
 
-    const handleDelete = async () => {
-        if (confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" không?`)) {
-            // Add your delete logic here, e.g., calling a server action
-            // console.log(`Deleting product ${product.productId}`);
-            alert('Chức năng xóa chưa được triển khai.');
-        }
-    };
+    const router = useRouter();
 
     return (
         <div className="flex items-center justify-between bg-background py-2">
@@ -40,14 +34,7 @@ const ProductDetailHeader: React.FC<ProductDetailHeaderProps> = ({ product }) =>
                     <Edit className="mr-2 h-4 w-4" />
                     Sửa sản phẩm
                 </Button>
-                <Button
-                    variant="destructive"
-                    onClick={handleDelete}
-                    className="hidden md:flex"
-                    disabled={!product.productId} // Disable if no product ID
-                >
-                    <Trash2 />
-                    Xóa sản phẩm</Button>
+                <DeleteProductButton product={product} />
             </div>
         </div>
     );

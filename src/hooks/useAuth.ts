@@ -10,15 +10,12 @@ export function useAuth() {
 
     useEffect(() => {
         if (!isLoaded) return; // Wait for Clerk to load
-
-        if (isSignedIn && clerkUser) {
-            // User is signed in, sync with our database
+        if (isSignedIn && clerkUser && !authUser && !isLoading) {
             checkAuth();
-        } else {
-            // User is not signed in, clear our auth state
+        } else if (!isSignedIn) {
             clearAuth();
         }
-    }, [isLoaded, isSignedIn, clerkUser, checkAuth, clearAuth]);
+    }, [isLoaded, isSignedIn, clerkUser, checkAuth, clearAuth, authUser, isLoading]);
 
     return {
         user: authUser,

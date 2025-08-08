@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
 import { useCreateProductStore } from "@/store/product/create-product-store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { addOneProduct } from "@/actions/product.action";
 import { toast } from "sonner";
 import ImageUpload from "@/components/ImageUpload";
@@ -36,6 +36,8 @@ export default function CreateProductPage() {
             resetForm();
         };
     }, [resetForm]);
+
+    const [imageUrl, setImageUrl] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -141,7 +143,7 @@ export default function CreateProductPage() {
             <div className="pt-14">
                 <div className="container mx-auto p-4 max-w-6xl">
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
+                        {/* TODO: bỏ trường biến thể  */}
                         {/* Left Column - Main Info */}
                         <div className="lg:col-span-2 space-y-4">
                             {/* Thông tin chung & Variant */}
@@ -329,7 +331,6 @@ export default function CreateProductPage() {
 
                         {/* Right Column - Additional Info */}
                         <div className="space-y-4">
-                            {/* TODO: IMG preview not working */}
                             {/* Ảnh sản phẩm với UploadThing */}
                             <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
                                 <CardHeader className="pb-3 bg-gradient-to-r from-blue-50/50 to-white border-b border-blue-100">
@@ -337,16 +338,13 @@ export default function CreateProductPage() {
                                 </CardHeader>
                                 <CardContent className="bg-white p-4">
                                     <ImageUpload
-                                        endpoint="productImageUploader"
-                                        value={formData.imageUrl}
-                                        onChange={(url) => updateFormData('imageUrl', url)}
+                                        endpoint="postImage"
+                                        value={imageUrl}
+                                        onChange={(url) => {
+                                            setImageUrl(url);
+                                            formData.imageUrl = url;
+                                        }}
                                     />
-
-                                    {formData.imageUrl && (
-                                        <div className="text-xs text-green-600 bg-green-50 p-2 rounded text-center mt-2">
-                                            ✓ Ảnh đã được tải lên thành công
-                                        </div>
-                                    )}
                                 </CardContent>
                             </Card>
 
