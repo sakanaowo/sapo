@@ -491,6 +491,8 @@ export async function addOneProduct(data: {
     }
 }
 
+// TODO: check logic
+
 export async function createPurchaseOrderForProduct(data: {
     variantId: string;
     supplierId: string;
