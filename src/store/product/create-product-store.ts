@@ -59,6 +59,10 @@ export interface CreateProductStore {
     updateUnitConversion: (index: number, field: keyof UnitConversion, value: string | number) => void;
     removeUnitConversion: (index: number) => void;
 
+    // Tag actions
+    addTag: (tag: string) => void;
+    removeTag: (index: number) => void;
+
     // Form actions
     setSubmitting: (isSubmitting: boolean) => void;
     resetForm: () => void;
@@ -167,6 +171,31 @@ export const useCreateProductStore = create<CreateProductStore>()(
                     }),
                     false,
                     'removeUnitConversion'
+                ),
+
+            // Tag actions
+            addTag: (tag) =>
+                set(
+                    (state) => ({
+                        formData: {
+                            ...state.formData,
+                            tags: [...state.formData.tags, tag.trim()],
+                        },
+                    }),
+                    false,
+                    'addTag'
+                ),
+
+            removeTag: (index) =>
+                set(
+                    (state) => ({
+                        formData: {
+                            ...state.formData,
+                            tags: state.formData.tags.filter((_, i) => i !== index),
+                        },
+                    }),
+                    false,
+                    'removeTag'
                 ),
 
             // Form actions

@@ -25,6 +25,8 @@ export default function CreateProductPage() {
         addUnitConversion,
         updateUnitConversion,
         removeUnitConversion,
+        addTag,
+        removeTag,
         setSubmitting,
         resetForm,
         syncInitialAndCurrentStock,
@@ -38,6 +40,21 @@ export default function CreateProductPage() {
     }, [resetForm]);
 
     const [imageUrl, setImageUrl] = useState("");
+    const [newTag, setNewTag] = useState("");
+
+    const handleAddTag = () => {
+        if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+            addTag(newTag.trim());
+            setNewTag("");
+        }
+    };
+
+    const handleTagKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddTag();
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -45,7 +62,6 @@ export default function CreateProductPage() {
         // Validation trước khi submit
         const requiredFields = [
             { field: 'name', message: 'Tên sản phẩm không được để trống' },
-            { field: 'variantName', message: 'Tên biến thể không được để trống' },
             { field: 'sku', message: 'Mã SKU không được để trống' },
         ];
 
@@ -78,7 +94,6 @@ export default function CreateProductPage() {
             const submitData = {
                 ...formData,
                 name: formData.name.trim(),
-                variantName: formData.variantName.trim(),
                 sku: formData.sku.trim(),
                 barcode: formData.barcode?.trim() || undefined,
                 brand: formData.brand?.trim() || '',
@@ -106,8 +121,8 @@ export default function CreateProductPage() {
 
     return (
         <div className="min-h-screen bg-gray-50/50">
-            {/* Fixed Header */}
-            <div className="fixed top-0 left-0 right-0 z-50 border-b bg-white/95 backdrop-blur shadow-sm">
+            {/* Header: dùng sticky để không che sidebar */}
+            <div className="sticky top-0 z-0 border-b bg-white/95 backdrop-blur shadow-sm">
                 <div className="flex h-14 items-center justify-between px-6">
                     <div className="flex items-center gap-3">
                         <Link href="/products">
@@ -140,10 +155,9 @@ export default function CreateProductPage() {
             </div>
 
             {/* Content */}
-            <div className="pt-14">
+            <div className="pt-4">
                 <div className="container mx-auto p-4 max-w-6xl">
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {/* TODO: bỏ trường biến thể  */}
                         {/* Left Column - Main Info */}
                         <div className="lg:col-span-2 space-y-4">
                             {/* Thông tin chung & Variant */}
@@ -164,16 +178,49 @@ export default function CreateProductPage() {
                                                 required
                                             />
                                         </div>
-                                        <div>
-                                            <Label htmlFor="variantName" className="text-sm font-medium text-gray-700">Tên biến thể *</Label>
-                                            <Input
-                                                id="variantName"
-                                                value={formData.variantName}
-                                                onChange={(e) => updateFormData('variantName', e.target.value)}
-                                                placeholder="VD: Size M, Màu đỏ..."
-                                                className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
-                                                required
-                                            />
+                                        <div className="col-span-2">
+                                            <Label className="text-sm font-medium text-gray-700">Tags</Label>
+                                            <div className="mt-1 space-y-2">
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        value={newTag}
+                                                        onChange={(e) => setNewTag(e.target.value)}
+                                                        onKeyPress={handleTagKeyPress}
+                                                        placeholder="Nhập tag và nhấn Enter"
+                                                        className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleAddTag}
+                                                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                                {formData.tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {formData.tags.map((tag, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
+                                                            >
+                                                                {tag}
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => removeTag(index)}
+                                                                    className="h-4 w-4 p-0 text-blue-600 hover:text-blue-800"
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div>
                                             <Label htmlFor="sku" className="text-sm font-medium text-gray-700">Mã SKU *</Label>
