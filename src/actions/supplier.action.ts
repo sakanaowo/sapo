@@ -1,7 +1,69 @@
 "use server"
 
 import prisma from "@/lib/prisma";
+import redis from "@/lib/redis";
 import { Supplier } from "@/lib/type/supplier.type";
+
+export interface SupplierSelectOption {
+    supplierId: string;
+    supplierCode: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    status?: string;
+}
+
+// Get all suppliers for select dropdown
+export async function getAllSuppliers(): Promise<SupplierSelectOption[]> {
+    const cacheKey = 'suppliers-all-select';
+
+    try {
+        // Check cache first (1 hour TTL)
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            console.log('Suppliers loaded from cache');
+            return JSON.parse(cached);
+        }
+
+        // Fetch from database
+        const suppliers = await prisma.supplier.findMany({
+            select: {
+                supplierId: true,
+                supplierCode: true,
+                name: true,
+                email: true,
+                phone: true,
+                status: true,
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        // Convert BigInt to string for JSON serialization
+        const serializedSuppliers: SupplierSelectOption[] = suppliers.map(supplier => ({
+            supplierId: supplier.supplierId.toString(),
+            supplierCode: supplier.supplierCode,
+            name: supplier.name,
+            email: supplier.email || "",
+            phone: supplier.phone || "",
+            status: supplier.status || "",
+        }));
+
+        // const serialized = JSON.parse(JSON.stringify(suppliers, (key, value) =>
+        //     typeof value === 'bigint' ? value.toString() : value
+        // ));
+
+        // Cache for 1 hour (3600 seconds)
+        await redis.setEx(cacheKey, 3600, JSON.stringify(serializedSuppliers));
+
+        console.log('Suppliers loaded from database and cached');
+        return serializedSuppliers;
+    } catch (error) {
+        console.error('Error fetching suppliers:', error);
+        throw new Error('Không thể tải danh sách nhà cung cấp');
+    }
+}
 
 // Email validation helper
 function isValidEmail(email: string): boolean {
@@ -55,6 +117,14 @@ export async function createSupplier(data: Supplier) {
                 status: data.status || "ACTIVE", // Standardized status
             },
         });
+
+        // Clear cache after creating new supplier
+        try {
+            await redis.del('suppliers-all-select');
+            console.log('Supplier cache cleared after creation');
+        } catch (cacheError) {
+            console.error('Error clearing supplier cache:', cacheError);
+        }
 
         // Serialize BigInt for JSON response
         const serializedSupplier = JSON.parse(JSON.stringify(newSupplier, (key, value) =>

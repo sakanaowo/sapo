@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { addOneProduct } from "@/actions/product.action";
 import { toast } from "sonner";
 import ImageUpload from "@/components/ImageUpload";
+import { SupplierSelect } from "@/components/suppliers/SupplierSelect";
 
 export default function CreateProductPage() {
     const router = useRouter();
@@ -62,7 +63,7 @@ export default function CreateProductPage() {
         const requiredFields = [
             { field: 'name', message: 'Tên sản phẩm không được để trống' },
             { field: 'sku', message: 'Mã SKU không được để trống' },
-            { field: 'supplierId', message: 'Nhà cung cấp là bắt buộc' },
+            { field: 'supplierCode', message: 'Mã nhà cung cấp là bắt buộc' },
         ];
 
         for (const { field, message } of requiredFields) {
@@ -450,18 +451,17 @@ export default function CreateProductPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4 bg-white">
                                     <div>
-                                        {/* TODO: List of suppliers or create new if not exists */}
-                                        <Label htmlFor="supplierId" className="text-sm font-medium text-gray-700">Nhà cung cấp *</Label>
-                                        <Input
-                                            id="supplierId"
-                                            value={formData.supplierId}
-                                            onChange={(e) => updateFormData('supplierId', e.target.value)}
-                                            placeholder="ID nhà cung cấp"
-                                            className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
-                                            required
-                                        />
+                                        <Label className="text-sm font-medium text-gray-700">Nhà cung cấp *</Label>
+                                        <div className="mt-1">
+                                            <SupplierSelect
+                                                value={formData.supplierCode}
+                                                onChange={(supplierCode) => updateFormData('supplierCode', supplierCode)}
+                                                placeholder="Chọn nhà cung cấp"
+                                                required
+                                            />
+                                        </div>
                                         <p className="text-xs text-gray-500 mt-1">
-                                            Nhà cung cấp sản phẩm này
+                                            Chọn nhà cung cấp cho sản phẩm này
                                         </p>
                                     </div>
 

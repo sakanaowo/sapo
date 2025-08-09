@@ -42,7 +42,7 @@ export interface ProductFormData {
     outputTax: number;
 
     // Purchase Order - bắt buộc
-    supplierId: string;           // Bắt buộc
+    supplierCode: string;         // Mã nhà cung cấp - bắt buộc
     importQuantity: number;       // Số lượng nhập lần đầu
     note: string;                // Ghi chú cho đơn nhập
 }
@@ -93,7 +93,7 @@ const initialFormData: ProductFormData = {
     taxApplied: false,
     inputTax: 0,
     outputTax: 0,
-    supplierId: "",
+    supplierCode: "",
     importQuantity: 0,
     note: "",
 };
