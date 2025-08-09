@@ -17,7 +17,6 @@ export interface ProductFormData {
     // Thông tin ProductVariant
     sku: string;
     barcode: string;
-    variantName: string;
     weight: number;
     weightUnit: string;
     unit: string;
@@ -43,6 +42,10 @@ export interface ProductFormData {
     taxApplied: boolean;
     inputTax: number;
     outputTax: number;
+
+    // Purchase Order (optional)
+    supplierId?: string;
+    createPurchaseOrder: boolean;
 }
 
 export interface CreateProductStore {
@@ -75,11 +78,10 @@ const initialFormData: ProductFormData = {
     name: "",
     description: "",
     brand: "",
-    productType: "standard",
+    productType: "Sản phẩm thường",
     tags: [],
     sku: "",
     barcode: "",
-    variantName: "",
     weight: 0,
     weightUnit: "g",
     unit: "",
@@ -97,6 +99,8 @@ const initialFormData: ProductFormData = {
     taxApplied: false,
     inputTax: 0,
     outputTax: 0,
+    supplierId: undefined,
+    createPurchaseOrder: false,
 };
 
 export const useCreateProductStore = create<CreateProductStore>()(

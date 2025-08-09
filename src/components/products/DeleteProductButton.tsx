@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogHeader } from 
 import { useState } from 'react'
 import { Button } from '../ui/button'
 import { Trash2 } from 'lucide-react'
-import { deleteProductById } from '@/actions/product.action'
+import { deleteProductById, flushAllCache } from '@/actions/product.action'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -24,9 +24,11 @@ function DeleteProductButton(product: ProductDetailHeaderProps) {
         setLoading(true);
         try {
             const res = await deleteProductById(product.product.productId);
+
             if (res) {
                 toast.success("Xóa sản phẩm thành công!");
                 router.push('/products');
+                await flushAllCache();
             } else {
                 toast.error("Không thể xóa sản phẩm");
             }
