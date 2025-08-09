@@ -121,8 +121,8 @@ export default function CreateProductPage() {
 
     return (
         <div className="min-h-screen bg-gray-50/50">
-            {/* Header: dùng sticky để không che sidebar */}
-            <div className="sticky top-0 z-0 border-b bg-white/95 backdrop-blur shadow-sm">
+            {/* Header */}
+            <div className="border-b bg-white shadow-sm">
                 <div className="flex h-14 items-center justify-between px-6">
                     <div className="flex items-center gap-3">
                         <Link href="/products">
@@ -133,9 +133,14 @@ export default function CreateProductPage() {
                         <h1 className="text-xl font-semibold">Thêm sản phẩm</h1>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => router.push("/products")}>
-                            Cancel
-                        </Button>
+                        <Link href="/products">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                            >
+                                Cancel
+                            </Button>
+                        </Link>
                         <Button
                             size="sm"
                             onClick={handleSubmit}
@@ -252,6 +257,45 @@ export default function CreateProductPage() {
                                                 placeholder="VD: cái, hộp, kg..."
                                                 className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                                             />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="weight" className="text-sm font-medium text-gray-700">Trọng lượng</Label>
+                                            <div className="flex gap-2 mt-1">
+                                                <Input
+                                                    id="weight"
+                                                    type="number"
+                                                    value={formData.weight}
+                                                    onChange={(e) => updateFormData('weight', parseFloat(e.target.value) || 0)}
+                                                    placeholder="0"
+                                                    className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
+                                                />
+                                                <select
+                                                    value={formData.weightUnit}
+                                                    onChange={(e) => updateFormData('weightUnit', e.target.value)}
+                                                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-blue-500 focus:ring-blue-500/20"
+                                                >
+                                                    <option value="g">g</option>
+                                                    <option value="kg">kg</option>
+                                                    <option value="ml">ml</option>
+                                                    <option value="l">l</option>
+                                                    <option value="oz">oz</option>
+                                                    <option value="lb">lb</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="productType" className="text-sm font-medium text-gray-700">Loại sản phẩm</Label>
+                                            <select
+                                                id="productType"
+                                                value={formData.productType}
+                                                onChange={(e) => updateFormData('productType', e.target.value)}
+                                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-blue-500 focus:ring-blue-500/20"
+                                            >
+                                                <option value="standard">Sản phẩm thường</option>
+                                                <option value="service">Dịch vụ</option>
+                                                <option value="combo">Combo</option>
+                                                <option value="digital">Sản phẩm số</option>
+                                            </select>
                                         </div>
                                         <div className="col-span-2">
                                             <Label htmlFor="description" className="text-sm font-medium text-gray-700">Mô tả</Label>
@@ -385,17 +429,50 @@ export default function CreateProductPage() {
                                 </CardHeader>
                                 <CardContent className="bg-white p-4">
                                     <ImageUpload
-                                        endpoint="postImage"
                                         value={imageUrl}
                                         onChange={(url) => {
                                             setImageUrl(url);
-                                            formData.imageUrl = url;
+                                            updateFormData('imageUrl', url);
                                         }}
                                     />
                                 </CardContent>
                             </Card>
 
+                            {/* Purchase Order Options */}
+                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-green-50/50 to-white border-b border-green-100">
+                                    <CardTitle className="text-lg text-gray-900">Đơn nhập hàng</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 bg-white">
+                                    <div className="flex items-center justify-between p-3 bg-gray-50/80 border border-gray-200 rounded-lg">
+                                        <div>
+                                            <Label className="text-sm font-medium text-gray-900">Tạo đơn nhập hàng</Label>
+                                            <p className="text-xs text-gray-600">Tự động tạo đơn nhập khi có tồn kho ban đầu</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.createPurchaseOrder}
+                                            onCheckedChange={(checked) => updateFormData('createPurchaseOrder', checked)}
+                                        />
+                                    </div>
 
+                                    {formData.createPurchaseOrder && (
+                                        <div>
+                                            <Label htmlFor="supplierId" className="text-sm font-medium text-gray-700">Nhà cung cấp</Label>
+                                            <Input
+                                                id="supplierId"
+                                                value={formData.supplierId || ''}
+                                                onChange={(e) => updateFormData('supplierId', e.target.value)}
+                                                placeholder="ID nhà cung cấp"
+                                                className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                            />
+                                            {/* TODO: show list of supplier or create new if not exist */}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Nhập ID nhà cung cấp để tạo đơn nhập hàng tự động
+                                            </p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
 
                             {/* Kho hàng */}
                             <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
@@ -440,6 +517,16 @@ export default function CreateProductPage() {
                                                 className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
                                             />
                                         </div>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="warehouseLocation" className="text-sm font-medium text-gray-700">Vị trí trong kho</Label>
+                                        <Input
+                                            id="warehouseLocation"
+                                            value={formData.warehouseLocation}
+                                            onChange={(e) => updateFormData('warehouseLocation', e.target.value)}
+                                            placeholder="VD: Kho A - Kệ 1"
+                                            className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
+                                        />
                                     </div>
                                 </CardContent>
                             </Card>
