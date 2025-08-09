@@ -267,12 +267,10 @@ export async function addOneProduct(data: {
     weight: number;
     weightUnit: string;
     unit: string;
-    imageUrl?: string; // Thêm field này
+    imageUrl?: string;
     retailPrice: number;
     importPrice: number;
     wholesalePrice: number;
-    initialStock: number;
-    currentStock: number;
     minStock: number;
     maxStock: number;
     warehouseLocation: string;
@@ -284,8 +282,10 @@ export async function addOneProduct(data: {
     taxApplied: boolean;
     inputTax: number;
     outputTax: number;
-    supplierId?: string; // Thêm field này để tạo purchase order
-    createPurchaseOrder?: boolean; // Flag để quyết định có tạo purchase order hay không
+    // Purchase Order - bắt buộc
+    supplierId: string;           // Bắt buộc phải có nhà cung cấp
+    importQuantity: number;       // Số lượng nhập lần đầu
+    note?: string;               // Ghi chú cho đơn nhập
 }) {
     try {
         // Validation
@@ -297,6 +297,12 @@ export async function addOneProduct(data: {
         }
         if (data.retailPrice <= 0) {
             throw new Error('Giá bán lẻ phải lớn hơn 0');
+        }
+        if (!data.supplierId) {
+            throw new Error('Nhà cung cấp là bắt buộc');
+        }
+        if (!data.importQuantity || data.importQuantity <= 0) {
+            throw new Error('Số lượng nhập phải lớn hơn 0');
         }
 
         // Check SKU duplicate
@@ -333,8 +339,8 @@ export async function addOneProduct(data: {
                             outputTax: data.outputTax || 0,
                             inventory: {
                                 create: {
-                                    initialStock: data.initialStock || 0,
-                                    currentStock: data.currentStock || 0,
+                                    initialStock: 0,
+                                    currentStock: 0,
                                     minStock: data.minStock || 0,
                                     maxStock: data.maxStock || 0,
                                     warehouseLocation: data.warehouseLocation?.trim() || null,
@@ -390,75 +396,70 @@ export async function addOneProduct(data: {
                 }
             }
 
-            // Tạo Purchase Order nếu có initialStock > 0 và có supplierId
-            let purchaseOrder = null;
-            if (data.createPurchaseOrder && data.initialStock > 0 && data.supplierId) {
-                // Kiểm tra supplier có tồn tại không
-                const supplier = await tx.supplier.findUnique({
-                    where: { supplierId: BigInt(data.supplierId) }
-                });
+            // Luôn tạo Purchase Order cho sản phẩm mới
+            const supplier = await tx.supplier.findUnique({
+                where: { supplierId: BigInt(data.supplierId) }
+            });
 
-                if (!supplier) {
-                    throw new Error('Nhà cung cấp không tồn tại');
-                }
+            if (!supplier) {
+                throw new Error('Nhà cung cấp không tồn tại');
+            }
 
-                // Tạo mã Purchase Order duy nhất
-                const purchaseOrderCode = `PO-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+            // Tạo mã Purchase Order duy nhất
+            const purchaseOrderCode = `PO-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
-                // Tạo Purchase Order
-                purchaseOrder = await tx.purchaseOrder.create({
-                    data: {
-                        purchaseOrderCode,
-                        supplierId: BigInt(data.supplierId),
-                        createdBy: null, // Có thể thêm user ID sau
-                        importDate: new Date(),
-                        status: 'COMPLETED', // Đánh dấu đã hoàn thành vì đã nhập hàng
-                        importStatus: 'IMPORTED',
-                        purchaseOrderDetails: {
-                            create: {
-                                variantId: baseVariant.variantId,
-                                quantity: data.initialStock,
-                                unitPrice: data.importPrice,
-                                discount: 0,
-                                totalAmount: data.initialStock * data.importPrice,
-                            },
+            // Tạo Purchase Order với trạng thái PENDING
+            const purchaseOrder = await tx.purchaseOrder.create({
+                data: {
+                    purchaseOrderCode,
+                    supplierId: BigInt(data.supplierId),
+                    createdBy: null, // Có thể thêm user ID sau
+                    importDate: null, // Chưa nhập hàng
+                    status: 'PENDING', // Đang chờ nhập hàng
+                    importStatus: 'PENDING',
+                    purchaseOrderDetails: {
+                        create: {
+                            variantId: baseVariant.variantId,
+                            quantity: data.importQuantity, // Số lượng muốn nhập
+                            unitPrice: data.importPrice,
+                            discount: 0,
+                            totalAmount: data.importQuantity * data.importPrice,
                         },
                     },
-                    include: {
-                        supplier: true,
-                        purchaseOrderDetails: true,
-                    },
+                },
+                include: {
+                    supplier: true,
+                    purchaseOrderDetails: true,
+                },
+            });
+
+            // Tạo purchase order details cho các unit conversions
+            if (data.unitConversions && data.unitConversions.length > 0) {
+                const conversionVariants = await tx.productVariant.findMany({
+                    where: {
+                        productId: product.productId,
+                        variantId: { not: baseVariant.variantId }
+                    }
                 });
 
-                // Nếu có unit conversions, cũng tạo purchase order details cho chúng
-                if (data.unitConversions && data.unitConversions.length > 0) {
-                    const conversionVariants = await tx.productVariant.findMany({
-                        where: {
-                            productId: product.productId,
-                            variantId: { not: baseVariant.variantId }
-                        }
-                    });
+                for (const convVariant of conversionVariants) {
+                    const conversionRate = data.unitConversions.find(c =>
+                        convVariant.unit === c.unit
+                    )?.conversionRate || 1;
 
-                    for (const convVariant of conversionVariants) {
-                        // Tính số lượng tương ứng cho đơn vị lớn hơn
-                        const conversionRate = data.unitConversions.find(c =>
-                            convVariant.unit === c.unit
-                        )?.conversionRate || 1;
+                    const convertedQuantity = data.importQuantity / conversionRate;
 
-                        const convertedQuantity = data.initialStock / conversionRate;
-
-                        if (convertedQuantity >= 1) {
-                            await tx.purchaseOrderDetail.create({
-                                data: {
-                                    purchaseOrderId: purchaseOrder.purchaseOrderId,
-                                    variantId: convVariant.variantId,
-                                    quantity: convertedQuantity,
-                                    unitPrice: convVariant.importPrice,
-                                    discount: 0,
-                                    totalAmount: convertedQuantity * convVariant.importPrice,
-                                },
-                            });
-                        }
+                    if (convertedQuantity >= 1) {
+                        await tx.purchaseOrderDetail.create({
+                            data: {
+                                purchaseOrderId: purchaseOrder.purchaseOrderId,
+                                variantId: convVariant.variantId,
+                                quantity: convertedQuantity,
+                                unitPrice: convVariant.importPrice,
+                                discount: 0,
+                                totalAmount: convertedQuantity * convVariant.importPrice,
+                            },
+                        });
                     }
                 }
             }
@@ -481,9 +482,7 @@ export async function addOneProduct(data: {
         return {
             product: serialized.product,
             purchaseOrder: serialized.purchaseOrder,
-            message: serialized.purchaseOrder
-                ? `Sản phẩm và đơn nhập hàng ${serialized.purchaseOrder.purchaseOrderCode} đã được tạo thành công`
-                : 'Sản phẩm đã được tạo thành công'
+            message: `Sản phẩm và đơn nhập hàng ${serialized.purchaseOrder.purchaseOrderCode} đã được tạo thành công. Vui lòng xác nhận nhập hàng để cập nhật tồn kho.`
         };
     } catch (error) {
         console.error('Error creating product:', error);
@@ -1524,6 +1523,7 @@ export async function getPurchaseOrders({
     }
 }
 
+// TODO: delete related variants
 export async function deleteProductById(productId: string) {
     try {
         const deleted = await prisma.product.delete({

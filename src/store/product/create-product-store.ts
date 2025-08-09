@@ -27,9 +27,7 @@ export interface ProductFormData {
     importPrice: number;
     wholesalePrice: number;
 
-    // Inventory
-    initialStock: number;
-    currentStock: number;
+    // Inventory settings (không có initialStock/currentStock)
     minStock: number;
     maxStock: number;
     warehouseLocation: string;
@@ -43,9 +41,10 @@ export interface ProductFormData {
     inputTax: number;
     outputTax: number;
 
-    // Purchase Order (optional)
-    supplierId?: string;
-    createPurchaseOrder: boolean;
+    // Purchase Order - bắt buộc
+    supplierId: string;           // Bắt buộc
+    importQuantity: number;       // Số lượng nhập lần đầu
+    note: string;                // Ghi chú cho đơn nhập
 }
 
 export interface CreateProductStore {
@@ -69,16 +68,13 @@ export interface CreateProductStore {
     // Form actions
     setSubmitting: (isSubmitting: boolean) => void;
     resetForm: () => void;
-
-    // Utility actions
-    syncInitialAndCurrentStock: (value: number) => void;
 }
 
 const initialFormData: ProductFormData = {
     name: "",
     description: "",
     brand: "",
-    productType: "Sản phẩm thường",
+    productType: "standard",
     tags: [],
     sku: "",
     barcode: "",
@@ -89,8 +85,6 @@ const initialFormData: ProductFormData = {
     retailPrice: 0,
     importPrice: 0,
     wholesalePrice: 0,
-    initialStock: 0,
-    currentStock: 0,
     minStock: 0,
     maxStock: 0,
     warehouseLocation: "",
@@ -99,8 +93,9 @@ const initialFormData: ProductFormData = {
     taxApplied: false,
     inputTax: 0,
     outputTax: 0,
-    supplierId: undefined,
-    createPurchaseOrder: false,
+    supplierId: "",
+    importQuantity: 0,
+    note: "",
 };
 
 export const useCreateProductStore = create<CreateProductStore>()(
@@ -214,20 +209,6 @@ export const useCreateProductStore = create<CreateProductStore>()(
                     },
                     false,
                     'resetForm'
-                ),
-
-            // Utility actions
-            syncInitialAndCurrentStock: (value) =>
-                set(
-                    (state) => ({
-                        formData: {
-                            ...state.formData,
-                            initialStock: value,
-                            currentStock: value,
-                        },
-                    }),
-                    false,
-                    'syncInitialAndCurrentStock'
                 ),
         }),
         {

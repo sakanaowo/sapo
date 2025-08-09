@@ -31,7 +31,7 @@ export default function AddProductDialog({
 
     const handleManualAdd = () => {
         handleOpenChange(false);
-        router.push('/products/create');
+        router.push('/products/purchase-orders/create');
     };
 
     const handleBulkImport = () => {
