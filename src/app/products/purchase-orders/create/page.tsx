@@ -29,7 +29,6 @@ export default function CreateProductPage() {
         removeTag,
         setSubmitting,
         resetForm,
-        syncInitialAndCurrentStock,
     } = useCreateProductStore();
 
     // Reset form when component unmounts
@@ -63,6 +62,7 @@ export default function CreateProductPage() {
         const requiredFields = [
             { field: 'name', message: 'Tên sản phẩm không được để trống' },
             { field: 'sku', message: 'Mã SKU không được để trống' },
+            { field: 'supplierId', message: 'Nhà cung cấp là bắt buộc' },
         ];
 
         for (const { field, message } of requiredFields) {
@@ -75,6 +75,11 @@ export default function CreateProductPage() {
 
         if (formData.retailPrice <= 0) {
             toast.error('Giá bán lẻ phải lớn hơn 0');
+            return;
+        }
+
+        if (formData.importQuantity <= 0) {
+            toast.error('Số lượng nhập phải lớn hơn 0');
             return;
         }
 
@@ -438,65 +443,66 @@ export default function CreateProductPage() {
                                 </CardContent>
                             </Card>
 
-                            {/* Purchase Order Options */}
+                            {/* Nhập hàng lần đầu */}
                             <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
                                 <CardHeader className="pb-3 bg-gradient-to-r from-green-50/50 to-white border-b border-green-100">
-                                    <CardTitle className="text-lg text-gray-900">Đơn nhập hàng</CardTitle>
+                                    <CardTitle className="text-lg text-gray-900">Nhập hàng lần đầu</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4 bg-white">
-                                    <div className="flex items-center justify-between p-3 bg-gray-50/80 border border-gray-200 rounded-lg">
-                                        <div>
-                                            <Label className="text-sm font-medium text-gray-900">Tạo đơn nhập hàng</Label>
-                                            <p className="text-xs text-gray-600">Tự động tạo đơn nhập khi có tồn kho ban đầu</p>
-                                        </div>
-                                        <Switch
-                                            checked={formData.createPurchaseOrder}
-                                            onCheckedChange={(checked) => updateFormData('createPurchaseOrder', checked)}
+                                    <div>
+                                        {/* TODO: List of suppliers or create new if not exists */}
+                                        <Label htmlFor="supplierId" className="text-sm font-medium text-gray-700">Nhà cung cấp *</Label>
+                                        <Input
+                                            id="supplierId"
+                                            value={formData.supplierId}
+                                            onChange={(e) => updateFormData('supplierId', e.target.value)}
+                                            placeholder="ID nhà cung cấp"
+                                            className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                            required
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Nhà cung cấp sản phẩm này
+                                        </p>
                                     </div>
 
-                                    {formData.createPurchaseOrder && (
-                                        <div>
-                                            <Label htmlFor="supplierId" className="text-sm font-medium text-gray-700">Nhà cung cấp</Label>
-                                            <Input
-                                                id="supplierId"
-                                                value={formData.supplierId || ''}
-                                                onChange={(e) => updateFormData('supplierId', e.target.value)}
-                                                placeholder="ID nhà cung cấp"
-                                                className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
-                                            />
-                                            {/* TODO: show list of supplier or create new if not exist */}
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Nhập ID nhà cung cấp để tạo đơn nhập hàng tự động
-                                            </p>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <Label htmlFor="importQuantity" className="text-sm font-medium text-gray-700">Số lượng nhập *</Label>
+                                        <Input
+                                            id="importQuantity"
+                                            type="number"
+                                            value={formData.importQuantity}
+                                            onChange={(e) => updateFormData('importQuantity', parseFloat(e.target.value) || 0)}
+                                            placeholder="0"
+                                            className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                            required
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Số lượng sản phẩm muốn nhập lần đầu
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="note" className="text-sm font-medium text-gray-700">Ghi chú</Label>
+                                        <Input
+                                            id="note"
+                                            value={formData.note}
+                                            onChange={(e) => updateFormData('note', e.target.value)}
+                                            placeholder="Ghi chú cho đơn nhập hàng"
+                                            className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
 
-                            {/* Kho hàng */}
+                            {/* Cài đặt kho */}
                             <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
                                 <CardHeader className="pb-3 bg-gradient-to-r from-orange-50/50 to-white border-b border-orange-100">
-                                    <CardTitle className="text-lg text-gray-900">Kho hàng</CardTitle>
+                                    <CardTitle className="text-lg text-gray-900">Cài đặt kho</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3 bg-white">
-                                    <div>
-                                        <Label htmlFor="initialStock" className="text-sm font-medium text-gray-700">Tồn kho ban đầu</Label>
-                                        <Input
-                                            id="initialStock"
-                                            type="number"
-                                            value={formData.initialStock}
-                                            onChange={(e) => {
-                                                const value = parseFloat(e.target.value) || 0;
-                                                syncInitialAndCurrentStock(value);
-                                            }}
-                                            placeholder="0"
-                                            className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
-                                        />
-                                    </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <Label htmlFor="minStock" className="text-sm font-medium text-gray-700">Tối thiểu</Label>
+                                            <Label htmlFor="minStock" className="text-sm font-medium text-gray-700">Tồn kho tối thiểu</Label>
                                             <Input
                                                 id="minStock"
                                                 type="number"
@@ -507,7 +513,7 @@ export default function CreateProductPage() {
                                             />
                                         </div>
                                         <div>
-                                            <Label htmlFor="maxStock" className="text-sm font-medium text-gray-700">Tối đa</Label>
+                                            <Label htmlFor="maxStock" className="text-sm font-medium text-gray-700">Tồn kho tối đa</Label>
                                             <Input
                                                 id="maxStock"
                                                 type="number"
