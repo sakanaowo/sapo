@@ -283,7 +283,7 @@ export async function addOneProduct(data: {
     inputTax: number;
     outputTax: number;
     // Purchase Order - bắt buộc
-    supplierId: string;           // Bắt buộc phải có nhà cung cấp
+    supplierCode: string;         // Mã nhà cung cấp - bắt buộc
     importQuantity: number;       // Số lượng nhập lần đầu
     note?: string;               // Ghi chú cho đơn nhập
 }) {
@@ -298,8 +298,8 @@ export async function addOneProduct(data: {
         if (data.retailPrice <= 0) {
             throw new Error('Giá bán lẻ phải lớn hơn 0');
         }
-        if (!data.supplierId) {
-            throw new Error('Nhà cung cấp là bắt buộc');
+        if (!data.supplierCode) {
+            throw new Error('Mã nhà cung cấp là bắt buộc');
         }
         if (!data.importQuantity || data.importQuantity <= 0) {
             throw new Error('Số lượng nhập phải lớn hơn 0');
@@ -312,7 +312,8 @@ export async function addOneProduct(data: {
         if (existingSku) {
             throw new Error('Mã SKU đã tồn tại');
         }
-
+        // ISSUE: đang gặp lỗi timeout
+        /*Failed to create product: Invalid `prisma.purchaseOrder.create()` invocation: Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5250 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.*/
         const result = await prisma.$transaction(async (tx) => {
             // Tạo Product và Variant chính
             const product = await tx.product.create({
@@ -398,11 +399,11 @@ export async function addOneProduct(data: {
 
             // Luôn tạo Purchase Order cho sản phẩm mới
             const supplier = await tx.supplier.findUnique({
-                where: { supplierId: BigInt(data.supplierId) }
+                where: { supplierCode: data.supplierCode }
             });
 
             if (!supplier) {
-                throw new Error('Nhà cung cấp không tồn tại');
+                throw new Error(`Nhà cung cấp với mã "${data.supplierCode}" không tồn tại`);
             }
 
             // Tạo mã Purchase Order duy nhất
@@ -412,7 +413,7 @@ export async function addOneProduct(data: {
             const purchaseOrder = await tx.purchaseOrder.create({
                 data: {
                     purchaseOrderCode,
-                    supplierId: BigInt(data.supplierId),
+                    supplierId: supplier.supplierId, // Sử dụng ID từ supplier đã tìm được
                     createdBy: null, // Có thể thêm user ID sau
                     importDate: null, // Chưa nhập hàng
                     status: 'PENDING', // Đang chờ nhập hàng
@@ -462,7 +463,7 @@ export async function addOneProduct(data: {
                         });
                     }
                 }
-            }
+            };
 
             return { product, purchaseOrder };
         });
