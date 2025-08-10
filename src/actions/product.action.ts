@@ -3,6 +3,14 @@
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
 
+// Helper function để tính stock cho conversion variants
+function calculateConversionStock(baseStock: number, conversionRate: number): number {
+    if (conversionRate <= 0) return 0;
+    return Math.floor(baseStock / conversionRate);
+}
+
+
+
 interface GetProductsParams {
     page?: number;
     limit?: number;
@@ -256,6 +264,28 @@ export async function flushAllCache() {
     }
 }
 
+/**
+ * ===== INVENTORY & CONVERSION LOGIC =====
+ * 
+ * 1. CHỈ BASE VARIANT CÓ INVENTORY THỰC TẾ
+ *    - Base variant: stock được lưu trong inventory table
+ *    - Conversion variants: KHÔNG có inventory, chỉ là metadata
+ * 
+ * 2. STOCK CALCULATION
+ *    - Base stock: Thực tế trong DB
+ *    - Conversion stock: Tính toán = baseStock / conversionRate
+ *    - VD: Base = 100 cái, rate = 12 → Conversion = 8 thùng
+ * 
+ * 3. PURCHASE ORDER
+ *    - Chỉ tạo PO detail cho base variant
+ *    - Import sẽ chỉ update stock của base variant
+ *    - Conversion stock tự động cập nhật theo calculation
+ * 
+ * 4. SELLING
+ *    - Có thể bán theo bất kỳ unit nào (base hoặc conversion)
+ *    - Khi bán conversion unit, sẽ deduct từ base stock theo rate
+ */
+
 export async function addOneProduct(data: {
     name: string;
     description: string;
@@ -288,54 +318,53 @@ export async function addOneProduct(data: {
     note?: string;               // Ghi chú cho đơn nhập
 }) {
     try {
-        // Validation
-        if (!data.name.trim()) {
-            throw new Error('Tên sản phẩm không được để trống');
-        }
-        if (!data.sku.trim()) {
-            throw new Error('Mã SKU không được để trống');
-        }
-        if (data.retailPrice <= 0) {
-            throw new Error('Giá bán lẻ phải lớn hơn 0');
-        }
-        if (!data.supplierCode) {
-            throw new Error('Mã nhà cung cấp là bắt buộc');
-        }
+        // VALIDATION
+        if (!data.name?.trim()) throw new Error('Tên sản phẩm không được để trống');
+        if (!data.sku?.trim()) throw new Error('Mã SKU không được để trống');
+        if (data.retailPrice <= 0) throw new Error('Giá bán lẻ phải lớn hơn 0');
+        if (!data.supplierCode?.trim()) throw new Error('Mã nhà cung cấp là bắt buộc');
         if (!data.importQuantity || data.importQuantity <= 0) {
             throw new Error('Số lượng nhập phải lớn hơn 0');
         }
 
-        // Check SKU duplicate
-        const existingSku = await prisma.productVariant.findUnique({
-            where: { sku: data.sku }
-        });
-        if (existingSku) {
-            throw new Error('Mã SKU đã tồn tại');
-        }
-        // ISSUE: đang gặp lỗi timeout
-        /*Failed to create product: Invalid `prisma.purchaseOrder.create()` invocation: Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5250 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.*/
-        const result = await prisma.$transaction(async (tx) => {
-            // Tạo Product và Variant chính
+        // Standardize the list of SKUs to check
+        const convUnits = (data.unitConversions ?? [])
+            .filter(c => c?.unit?.trim() && c.conversionRate > 0);
+        const candidateSkus = [
+            data.sku.trim(),
+            ...convUnits.map(c => `${data.sku.trim()}-${c.unit.trim()}`)
+        ];
+
+        // check SKU duplicate
+        const dup = await prisma.productVariant.findFirst({
+            where: { sku: { in: candidateSkus } },
+            select: { sku: true }
+        })
+        if (dup) throw new Error(`SKU đã tồn tại: ${dup.sku}`);
+
+        // CREATE PRODUCT + VARIANTs - transaction1
+        const { productId, baseVariantId } = await prisma.$transaction(async (tx) => {
+            // 1
             const product = await tx.product.create({
                 data: {
                     name: data.name.trim(),
                     description: data.description?.trim() || null,
                     brand: data.brand?.trim() || null,
-                    productType: data.productType || "Sản phẩm thường",
-                    tags: data.tags.length > 0 ? data.tags.join(',') : null,
+                    productType: data.productType || 'Sản phẩm thường',
+                    tags: data.tags?.length ? data.tags.join(',') : null,
                     variants: {
                         create: {
                             sku: data.sku.trim(),
                             barcode: data.barcode?.trim() || null,
                             variantName: `${data.name.trim()} - ${data.unit}`,
                             weight: data.weight || 0,
-                            weightUnit: data.weightUnit || "g",
-                            unit: data.unit?.trim() || "",
-                            imageUrl: data.imageUrl || null, // Sử dụng imageUrl từ form
+                            weightUnit: data.weightUnit || 'g',
+                            unit: data.unit?.trim() || '',
+                            imageUrl: data.imageUrl || null,
                             retailPrice: data.retailPrice,
                             wholesalePrice: data.wholesalePrice || 0,
                             importPrice: data.importPrice || 0,
-                            taxApplied: data.taxApplied || false,
+                            taxApplied: !!data.taxApplied,
                             inputTax: data.inputTax || 0,
                             outputTax: data.outputTax || 0,
                             inventory: {
@@ -351,147 +380,196 @@ export async function addOneProduct(data: {
                     },
                 },
                 include: {
-                    variants: {
-                        include: {
-                            inventory: true,
-                        },
-                    },
+                    variants: { include: { inventory: true } },
                 },
             });
 
             const baseVariant = product.variants[0];
 
-            // Tạo Unit Conversions (chỉ tạo metadata conversion, không tạo variant mới)
-            if (data.unitConversions && data.unitConversions.length > 0) {
-                for (const conv of data.unitConversions) {
-                    if (conv.unit.trim() && conv.conversionRate > 0) {
-                        // Tạo variant cho đơn vị lớn hơn
-                        const convVariant = await tx.productVariant.create({
-                            data: {
-                                productId: product.productId,
-                                sku: `${data.sku}-${conv.unit.trim()}`,
-                                variantName: `${data.name.trim()} - ${conv.unit}`,
-                                weight: data.weight * conv.conversionRate,
-                                weightUnit: data.weightUnit,
-                                unit: conv.unit.trim(),
-                                retailPrice: data.retailPrice * conv.conversionRate,
-                                wholesalePrice: data.wholesalePrice * conv.conversionRate,
-                                importPrice: data.importPrice * conv.conversionRate,
-                                taxApplied: data.taxApplied,
-                                inputTax: data.inputTax,
-                                outputTax: data.outputTax,
-                                barcode: null,
-                                imageUrl: data.imageUrl || null, // Dùng chung ảnh
-                            },
-                        });
+            // 2
+            if (convUnits.length) {
+                for (const conv of convUnits) {
+                    const convVariant = await tx.productVariant.create({
+                        data: {
+                            productId: product.productId,
+                            sku: `${data.sku.trim()}-${conv.unit.trim()}`,
+                            variantName: `${data.name.trim()} - ${conv.unit.trim()}`,
+                            weight: (data.weight || 0) * conv.conversionRate,
+                            weightUnit: data.weightUnit || 'g',
+                            unit: conv.unit.trim(),
+                            imageUrl: data.imageUrl || null,
+                            // nhân theo conversionRate để đảm bảo tỷ lệ giá/khối lượng
+                            retailPrice: data.retailPrice * conv.conversionRate,
+                            wholesalePrice: (data.wholesalePrice || 0) * conv.conversionRate,
+                            importPrice: (data.importPrice || 0) * conv.conversionRate,
+                            taxApplied: !!data.taxApplied,
+                            inputTax: data.inputTax || 0,
+                            outputTax: data.outputTax || 0,
+                            // không tạo inventory cho conversion, chỉ base mới có stock thực nhập
+                        },
+                    });
 
-                        // Tạo conversion relationship
-                        await tx.unitConversion.create({
-                            data: {
-                                fromVariantId: baseVariant.variantId,
-                                toVariantId: convVariant.variantId,
-                                conversionRate: conv.conversionRate,
-                            },
-                        });
-                    }
+                    await tx.unitConversion.create({
+                        data: {
+                            fromVariantId: baseVariant.variantId,
+                            toVariantId: convVariant.variantId,
+                            conversionRate: conv.conversionRate,
+                        },
+                    });
                 }
             }
+            return {
+                productId: product.productId,
+                baseVariantId: baseVariant.variantId,
+            };
+        });
 
-            // Luôn tạo Purchase Order cho sản phẩm mới
+        // create purchase order - transaction 2
+        const { product, purchaseOrder } = await prisma.$transaction(async (tx) => {
+            // 1 find supplier for supplierCode
             const supplier = await tx.supplier.findUnique({
-                where: { supplierCode: data.supplierCode }
+                where: { supplierCode: data.supplierCode.trim() },
+                select: { supplierId: true, name: true, supplierCode: true }
             });
+            if (!supplier) throw new Error(`Nhà cung cấp với mã "${data.supplierCode}" không tồn tại`);
 
-            if (!supplier) {
-                throw new Error(`Nhà cung cấp với mã "${data.supplierCode}" không tồn tại`);
-            }
+            const purchaseOrderCode = `PO-${Date.now()}-${Math.random()
+                .toString(36)
+                .substring(2, 6).toUpperCase()}`
 
-            // Tạo mã Purchase Order duy nhất
-            const purchaseOrderCode = `PO-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-            // Tạo Purchase Order với trạng thái PENDING
-            const purchaseOrder = await tx.purchaseOrder.create({
+            // PO -> pending
+            const po = await tx.purchaseOrder.create({
                 data: {
                     purchaseOrderCode,
-                    supplierId: supplier.supplierId, // Sử dụng ID từ supplier đã tìm được
-                    createdBy: null, // Có thể thêm user ID sau
-                    importDate: null, // Chưa nhập hàng
-                    status: 'PENDING', // Đang chờ nhập hàng
+                    supplierId: supplier.supplierId,
+                    createdBy: null,
+                    importDate: null,
+                    status: 'PENDING',
                     importStatus: 'PENDING',
                     purchaseOrderDetails: {
                         create: {
-                            variantId: baseVariant.variantId,
-                            quantity: data.importQuantity, // Số lượng muốn nhập
+                            variantId: baseVariantId,
+                            quantity: data.importQuantity,
                             unitPrice: data.importPrice,
                             discount: 0,
                             totalAmount: data.importQuantity * data.importPrice,
                         },
                     },
+
                 },
                 include: {
                     supplier: true,
                     purchaseOrderDetails: true,
-                },
+                }
             });
 
-            // Tạo purchase order details cho các unit conversions
-            if (data.unitConversions && data.unitConversions.length > 0) {
-                const conversionVariants = await tx.productVariant.findMany({
-                    where: {
-                        productId: product.productId,
-                        variantId: { not: baseVariant.variantId }
-                    }
-                });
+            // NOTE: Chỉ tạo PO detail cho base variant
+            // Conversion variants chỉ là metadata để display/sell với đơn vị khác
+            // Stock thực tế chỉ lưu ở base variant, conversion stock = baseStock / conversionRate
 
-                for (const convVariant of conversionVariants) {
-                    const conversionRate = data.unitConversions.find(c =>
-                        convVariant.unit === c.unit
-                    )?.conversionRate || 1;
-
-                    const convertedQuantity = data.importQuantity / conversionRate;
-
-                    if (convertedQuantity >= 1) {
-                        await tx.purchaseOrderDetail.create({
-                            data: {
-                                purchaseOrderId: purchaseOrder.purchaseOrderId,
-                                variantId: convVariant.variantId,
-                                quantity: convertedQuantity,
-                                unitPrice: convVariant.importPrice,
-                                discount: 0,
-                                totalAmount: convertedQuantity * convVariant.importPrice,
-                            },
-                        });
-                    }
-                }
-            };
-
-            return { product, purchaseOrder };
+            const createdProduct = await tx.product.findUnique({
+                where: { productId },
+                include: { variants: true }
+            });
+            return { product: createdProduct, purchaseOrder: po };
         });
 
-        // Invalidate cache
         try {
             await redis.flushAll();
-        } catch (cacheError) {
-            console.error('Error invalidating cache:', cacheError);
+        } catch (err) {
+            console.error('Error flushing Redis cache:', err);
         }
 
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
+        const serialized = JSON.parse(JSON.stringify({ product, purchaseOrder }, (k, v) =>
+            typeof v === 'bigint' ? v.toString() : v
         ));
 
         return {
             product: serialized.product,
             purchaseOrder: serialized.purchaseOrder,
-            message: `Sản phẩm và đơn nhập hàng ${serialized.purchaseOrder.purchaseOrderCode} đã được tạo thành công. Vui lòng xác nhận nhập hàng để cập nhật tồn kho.`
-        };
+            message: `Tạo đơn nhập thành công`
+        }
+
     } catch (error) {
         console.error('Error creating product:', error);
-        throw new Error(`Failed to create product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error('Tạo sản phẩm thất bại');
     }
 }
 
-// TODO: check logic
+// Helper function để lấy thông tin stock cho tất cả variants của product
+export async function getProductVariantsWithStock(productId: bigint) {
+    try {
+        const product = await prisma.product.findUnique({
+            where: { productId },
+            include: {
+                variants: {
+                    include: {
+                        inventory: true,
+                        fromConversions: {
+                            include: {
+                                toVariant: {
+                                    select: {
+                                        variantId: true,
+                                        unit: true,
+                                        variantName: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!product) {
+            throw new Error('Product not found');
+        }
+
+        // Tìm base variant (variant có inventory)
+        const baseVariant = product.variants.find(v => v.inventory);
+        if (!baseVariant) {
+            throw new Error('Base variant with inventory not found');
+        }
+
+        // Calculate stock cho tất cả variants
+        const variantsWithStock = product.variants.map(variant => {
+            if (variant.inventory) {
+                // Base variant - stock thực tế
+                return {
+                    ...variant,
+                    currentStock: variant.inventory.currentStock,
+                    isBaseVariant: true
+                };
+            } else {
+                // Conversion variant - tính stock từ base
+                const conversion = baseVariant.fromConversions.find(
+                    conv => conv.toVariant.variantId === variant.variantId
+                );
+                const conversionRate = conversion?.conversionRate || 1;
+                const calculatedStock = calculateConversionStock(
+                    baseVariant.inventory!.currentStock,
+                    conversionRate
+                );
+
+                return {
+                    ...variant,
+                    currentStock: calculatedStock,
+                    isBaseVariant: false,
+                    conversionRate
+                };
+            }
+        });
+
+        return {
+            ...product,
+            variants: variantsWithStock
+        };
+
+    } catch (error) {
+        console.error('Error getting product variants with stock:', error);
+        throw error;
+    }
+}
 
 export async function createPurchaseOrderForProduct(data: {
     variantId: string;
@@ -625,171 +703,6 @@ export async function createPurchaseOrderForProduct(data: {
     }
 }
 
-export async function getSuppliers() {
-    try {
-        const suppliers = await prisma.supplier.findMany({
-            select: {
-                supplierId: true,
-                supplierCode: true,
-                name: true,
-                status: true,
-            },
-            where: {
-                status: 'ACTIVE', // Chỉ lấy supplier đang hoạt động
-            },
-            orderBy: {
-                name: 'asc',
-            },
-        });
-
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(suppliers, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-        ));
-
-        return serialized;
-    } catch (error) {
-        console.error('Error fetching suppliers:', error);
-        throw new Error(`Failed to fetch suppliers: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-}
-
-export async function getPurchaseOrdersByProduct(productId: string) {
-    try {
-        const purchaseOrders = await prisma.purchaseOrder.findMany({
-            where: {
-                purchaseOrderDetails: {
-                    some: {
-                        variant: {
-                            productId: BigInt(productId)
-                        }
-                    }
-                }
-            },
-            include: {
-                supplier: {
-                    select: {
-                        supplierId: true,
-                        name: true,
-                        supplierCode: true,
-                    }
-                },
-                purchaseOrderDetails: {
-                    where: {
-                        variant: {
-                            productId: BigInt(productId)
-                        }
-                    },
-                    include: {
-                        variant: {
-                            include: {
-                                product: {
-                                    select: {
-                                        productId: true,
-                                        name: true,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        });
-
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(purchaseOrders, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-        ));
-
-        return serialized;
-    } catch (error) {
-        console.error('Error fetching purchase orders:', error);
-        throw new Error(`Failed to fetch purchase orders: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-}
-
-export async function updatePurchaseOrderStatus(purchaseOrderId: string, status: string, importStatus?: string) {
-    try {
-        const updatedPurchaseOrder = await prisma.purchaseOrder.update({
-            where: { purchaseOrderId: BigInt(purchaseOrderId) },
-            data: {
-                status,
-                ...(importStatus && { importStatus }),
-                ...(status === 'COMPLETED' && { importDate: new Date() }),
-            },
-            include: {
-                supplier: true,
-                purchaseOrderDetails: {
-                    include: {
-                        variant: {
-                            include: {
-                                product: true,
-                                inventory: true,
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // Nếu status là COMPLETED và importStatus là IMPORTED, cập nhật inventory
-        if (status === 'COMPLETED' && importStatus === 'IMPORTED') {
-            await prisma.$transaction(async (tx) => {
-                for (const detail of updatedPurchaseOrder.purchaseOrderDetails) {
-                    if (detail.variant.inventory) {
-                        await tx.inventory.update({
-                            where: { inventoryId: detail.variant.inventory.inventoryId },
-                            data: {
-                                currentStock: {
-                                    increment: detail.quantity
-                                },
-                                updatedAt: new Date(),
-                            },
-                        });
-                    } else {
-                        // Tạo inventory nếu chưa có
-                        await tx.inventory.create({
-                            data: {
-                                variantId: detail.variantId,
-                                initialStock: detail.quantity,
-                                currentStock: detail.quantity,
-                                minStock: 0,
-                                maxStock: 0,
-                            },
-                        });
-                    }
-                }
-            });
-        }
-
-        // Invalidate cache
-        try {
-            await redis.flushAll();
-        } catch (cacheError) {
-            console.error('Error invalidating cache:', cacheError);
-        }
-
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(updatedPurchaseOrder, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-        ));
-
-        return {
-            success: true,
-            data: serialized,
-            message: 'Đơn nhập hàng đã được cập nhật thành công'
-        };
-    } catch (error) {
-        console.error('Error updating purchase order:', error);
-        return {
-            success: false,
-            message: `Failed to update purchase order: ${error instanceof Error ? error.message : 'Unknown error'}`
-        };
-    }
-}
 
 export async function bulkImportProducts(data: {
     supplierId: string;
@@ -1069,458 +982,6 @@ export async function bulkImportProducts(data: {
             success: false,
             message: `Failed to bulk import products: ${error instanceof Error ? error.message : 'Unknown error'}`
         };
-    }
-}
-
-export async function createPurchaseOrderFromExistingProducts(data: {
-    supplierId: string;
-    importDate?: Date;
-    note?: string;
-    items: Array<{
-        variantId: string;
-        quantity: number;
-        unitPrice: number;
-        discount?: number;
-    }>;
-}) {
-    try {
-        // Validation
-        if (!data.supplierId) {
-            throw new Error('Supplier ID là bắt buộc');
-        }
-        if (!data.items || data.items.length === 0) {
-            throw new Error('Danh sách sản phẩm không được rỗng');
-        }
-
-        // Validate từng item
-        for (let i = 0; i < data.items.length; i++) {
-            const item = data.items[i];
-            if (!item.variantId) {
-                throw new Error(`Variant ID tại dòng ${i + 1} là bắt buộc`);
-            }
-            if (item.quantity <= 0) {
-                throw new Error(`Số lượng tại dòng ${i + 1} phải lớn hơn 0`);
-            }
-            if (item.unitPrice < 0) {
-                throw new Error(`Giá nhập tại dòng ${i + 1} không được âm`);
-            }
-        }
-
-        const result = await prisma.$transaction(async (tx) => {
-            // Kiểm tra supplier có tồn tại không
-            const supplier = await tx.supplier.findUnique({
-                where: { supplierId: BigInt(data.supplierId) }
-            });
-
-            if (!supplier) {
-                throw new Error('Nhà cung cấp không tồn tại');
-            }
-
-            // Kiểm tra tất cả variants có tồn tại không
-            const variants = await tx.productVariant.findMany({
-                where: {
-                    variantId: {
-                        in: data.items.map(item => BigInt(item.variantId))
-                    }
-                },
-                include: {
-                    product: {
-                        select: {
-                            productId: true,
-                            name: true,
-                        }
-                    },
-                    inventory: true,
-                }
-            });
-
-            if (variants.length !== data.items.length) {
-                throw new Error('Một số sản phẩm không tồn tại trong hệ thống');
-            }
-
-            // Tạo mã Purchase Order duy nhất
-            const purchaseOrderCode = `PO-RESTOCK-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-            // Tính tổng amount
-            let totalOrderAmount = 0;
-            const purchaseOrderDetails = [];
-
-            for (const item of data.items) {
-                const totalAmount = item.quantity * item.unitPrice - (item.discount || 0);
-                totalOrderAmount += totalAmount;
-
-                purchaseOrderDetails.push({
-                    variantId: BigInt(item.variantId),
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    discount: item.discount || 0,
-                    totalAmount,
-                });
-            }
-
-            // Tạo Purchase Order
-            const purchaseOrder = await tx.purchaseOrder.create({
-                data: {
-                    purchaseOrderCode,
-                    supplierId: BigInt(data.supplierId),
-                    createdBy: null, // Có thể thêm user ID sau
-                    importDate: data.importDate || new Date(),
-                    status: 'PENDING', // Để pending, sẽ update khi nhập hàng thực tế
-                    importStatus: 'PENDING',
-                    purchaseOrderDetails: {
-                        createMany: {
-                            data: purchaseOrderDetails
-                        }
-                    },
-                },
-                include: {
-                    supplier: {
-                        select: {
-                            supplierId: true,
-                            name: true,
-                            supplierCode: true,
-                        }
-                    },
-                    purchaseOrderDetails: {
-                        include: {
-                            variant: {
-                                include: {
-                                    product: {
-                                        select: {
-                                            productId: true,
-                                            name: true,
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            return {
-                purchaseOrder,
-                totalAmount: totalOrderAmount,
-                itemCount: data.items.length
-            };
-        });
-
-        // Invalidate cache
-        try {
-            await redis.flushAll();
-        } catch (cacheError) {
-            console.error('Error invalidating cache:', cacheError);
-        }
-
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-        ));
-
-        return {
-            success: true,
-            data: serialized,
-            message: `Đã tạo đơn nhập hàng ${serialized.purchaseOrder.purchaseOrderCode} với ${serialized.itemCount} sản phẩm`
-        };
-    } catch (error) {
-        console.error('Error creating purchase order:', error);
-        return {
-            success: false,
-            message: `Failed to create purchase order: ${error instanceof Error ? error.message : 'Unknown error'}`
-        };
-    }
-}
-
-export async function confirmPurchaseOrderImport(
-    purchaseOrderId: string,
-    importData?: {
-        actualQuantities?: Array<{
-            variantId: string;
-            actualQuantity: number;
-        }>;
-        importDate?: Date;
-        note?: string;
-    }
-) {
-    try {
-        const result = await prisma.$transaction(async (tx) => {
-            // Lấy Purchase Order hiện tại
-            const purchaseOrder = await tx.purchaseOrder.findUnique({
-                where: { purchaseOrderId: BigInt(purchaseOrderId) },
-                include: {
-                    supplier: true,
-                    purchaseOrderDetails: {
-                        include: {
-                            variant: {
-                                include: {
-                                    product: true,
-                                    inventory: true,
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            if (!purchaseOrder) {
-                throw new Error('Đơn nhập hàng không tồn tại');
-            }
-
-            if (purchaseOrder.importStatus === 'IMPORTED') {
-                throw new Error('Đơn nhập hàng này đã được nhập vào kho');
-            }
-
-            // Cập nhật trạng thái Purchase Order
-            await tx.purchaseOrder.update({
-                where: { purchaseOrderId: BigInt(purchaseOrderId) },
-                data: {
-                    status: 'COMPLETED',
-                    importStatus: 'IMPORTED',
-                    importDate: importData?.importDate || new Date(),
-                },
-            });
-
-            const inventoryUpdates = [];
-
-            // Cập nhật inventory cho từng product variant
-            for (const detail of purchaseOrder.purchaseOrderDetails) {
-                let quantityToAdd = detail.quantity;
-
-                // Nếu có actual quantity khác với planned quantity
-                if (importData?.actualQuantities) {
-                    const actualQty = importData.actualQuantities.find(
-                        aq => aq.variantId === detail.variantId.toString()
-                    );
-                    if (actualQty) {
-                        quantityToAdd = actualQty.actualQuantity;
-
-                        // Cập nhật purchase order detail với actual quantity
-                        await tx.purchaseOrderDetail.update({
-                            where: { purchaseOrderDetailId: detail.purchaseOrderDetailId },
-                            data: {
-                                quantity: actualQty.actualQuantity,
-                                totalAmount: actualQty.actualQuantity * detail.unitPrice - detail.discount,
-                            },
-                        });
-                    }
-                }
-
-                // Cập nhật hoặc tạo inventory
-                if (detail.variant.inventory) {
-                    const updatedInventory = await tx.inventory.update({
-                        where: { inventoryId: detail.variant.inventory.inventoryId },
-                        data: {
-                            currentStock: {
-                                increment: quantityToAdd
-                            },
-                            updatedAt: new Date(),
-                        },
-                    });
-                    inventoryUpdates.push(updatedInventory);
-                } else {
-                    // Tạo inventory mới nếu chưa có
-                    const newInventory = await tx.inventory.create({
-                        data: {
-                            variantId: detail.variantId,
-                            initialStock: quantityToAdd,
-                            currentStock: quantityToAdd,
-                            minStock: 0,
-                            maxStock: 0,
-                        },
-                    });
-                    inventoryUpdates.push(newInventory);
-                }
-            }
-
-            // Lấy Purchase Order đã cập nhật
-            const updatedPurchaseOrder = await tx.purchaseOrder.findUnique({
-                where: { purchaseOrderId: BigInt(purchaseOrderId) },
-                include: {
-                    supplier: true,
-                    purchaseOrderDetails: {
-                        include: {
-                            variant: {
-                                include: {
-                                    product: true,
-                                    inventory: true,
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            return {
-                purchaseOrder: updatedPurchaseOrder,
-                inventoryUpdates,
-                importedItemsCount: purchaseOrder.purchaseOrderDetails.length
-            };
-        });
-
-        // Invalidate cache
-        try {
-            await redis.flushAll();
-        } catch (cacheError) {
-            console.error('Error invalidating cache:', cacheError);
-        }
-
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-        ));
-
-        return {
-            success: true,
-            data: serialized,
-            message: `Đã nhập hàng thành công cho ${serialized.importedItemsCount} sản phẩm`
-        };
-    } catch (error) {
-        console.error('Error confirming purchase order import:', error);
-        return {
-            success: false,
-            message: `Failed to confirm import: ${error instanceof Error ? error.message : 'Unknown error'}`
-        };
-    }
-}
-
-export async function getPurchaseOrders({
-    page = 1,
-    limit = 20,
-    status,
-    supplierId,
-    search = '',
-    dateFrom,
-    dateTo
-}: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    supplierId?: string;
-    search?: string;
-    dateFrom?: Date;
-    dateTo?: Date;
-} = {}) {
-    try {
-        // Build where clause
-        const whereClause: {
-            status?: string;
-            supplierId?: bigint;
-            purchaseOrderCode?: {
-                contains: string;
-                mode: 'insensitive';
-            };
-            createdAt?: {
-                gte?: Date;
-                lte?: Date;
-            };
-        } = {};
-
-        if (status) {
-            whereClause.status = status;
-        }
-
-        if (supplierId) {
-            whereClause.supplierId = BigInt(supplierId);
-        }
-
-        if (search) {
-            whereClause.purchaseOrderCode = {
-                contains: search,
-                mode: 'insensitive'
-            };
-        }
-
-        if (dateFrom || dateTo) {
-            whereClause.createdAt = {};
-            if (dateFrom) {
-                whereClause.createdAt.gte = dateFrom;
-            }
-            if (dateTo) {
-                whereClause.createdAt.lte = dateTo;
-            }
-        }
-
-        // Get total count
-        const totalCount = await prisma.purchaseOrder.count({ where: whereClause });
-
-        // Get purchase orders
-        const purchaseOrders = await prisma.purchaseOrder.findMany({
-            where: whereClause,
-            include: {
-                supplier: {
-                    select: {
-                        supplierId: true,
-                        name: true,
-                        supplierCode: true,
-                    }
-                },
-                purchaseOrderDetails: {
-                    include: {
-                        variant: {
-                            include: {
-                                product: {
-                                    select: {
-                                        productId: true,
-                                        name: true,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                _count: {
-                    select: {
-                        purchaseOrderDetails: true
-                    }
-                }
-            },
-            skip: (page - 1) * limit,
-            take: limit,
-            orderBy: {
-                createdAt: 'desc'
-            }
-        });
-
-        // Calculate totals for each purchase order
-        const purchaseOrdersWithTotals = purchaseOrders.map(po => {
-            const totalAmount = po.purchaseOrderDetails.reduce(
-                (sum, detail) => sum + detail.totalAmount, 0
-            );
-            const totalQuantity = po.purchaseOrderDetails.reduce(
-                (sum, detail) => sum + detail.quantity, 0
-            );
-
-            return {
-                ...po,
-                totalAmount,
-                totalQuantity,
-                itemCount: po._count.purchaseOrderDetails
-            };
-        });
-
-        // Serialize BigInt
-        const serialized = JSON.parse(JSON.stringify(purchaseOrdersWithTotals, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-        ));
-
-        // Build result with pagination metadata
-        const totalPages = Math.ceil(totalCount / limit);
-        const result = {
-            data: serialized,
-            pagination: {
-                page,
-                limit,
-                total: totalCount,
-                totalPages,
-                hasNext: page < totalPages,
-                hasPrev: page > 1,
-            },
-        };
-
-        return result;
-    } catch (error) {
-        console.error('Error fetching purchase orders:', error);
-        throw new Error(`Failed to fetch purchase orders: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
