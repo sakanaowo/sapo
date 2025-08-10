@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Package, User, Calendar, FileText } from 'lucide-react';
+import PurchaseOrderActions from '@/components/purchase-orders/purchase-order-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,16 +53,13 @@ const formatDate = (dateString: string) => {
 const getStatusBadge = (status: string, importStatus?: string) => {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
         'PENDING': { label: 'Chờ xử lý', variant: 'outline' },
-        'CONFIRMED': { label: 'Đã xác nhận', variant: 'default' },
-        'SHIPPED': { label: 'Đang vận chuyển', variant: 'secondary' },
-        'DELIVERED': { label: 'Đã giao', variant: 'default' },
+        'COMPLETED': { label: 'Hoàn thành', variant: 'default' },
         'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
     };
 
     const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
         'PENDING': { label: 'Chưa nhập', variant: 'outline' },
-        'PARTIAL': { label: 'Nhập một phần', variant: 'secondary' },
-        'COMPLETED': { label: 'Đã nhập hoàn tất', variant: 'default' },
+        'IMPORTED': { label: 'Đã nhập kho', variant: 'default' },
         'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
     };
 
@@ -114,14 +112,6 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                             <Package className="h-5 w-5 text-blue-600" />
                             <h1 className="text-xl font-semibold">Chi tiết đơn nhập hàng</h1>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {order.status === 'PENDING' && (
-                                // TODO: Implement confirm order functionality
-                                <Button size="sm" >
-                                    Xác nhận đơn
-                                </Button>
-                            )}
-                        </div>
                     </div>
                 </div>
 
@@ -159,6 +149,62 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                {/* Supplier Info */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <User className="h-4 w-4" />
+                                            Nhà cung cấp
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <div className="font-medium">{order.supplier?.name}</div>
+                                                <div className="text-sm text-gray-500">Mã: {order.supplier?.supplierCode}</div>
+                                            </div>
+                                            {order.supplier?.email && (
+                                                <div className="text-sm text-gray-600">{order.supplier.email}</div>
+                                            )}
+                                            {order.supplier?.phone && (
+                                                <div className="text-sm text-gray-600">{order.supplier.phone}</div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Order Summary */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4" />
+                                            Tổng kết đơn hàng
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Số mặt hàng:</span>
+                                                <span className="font-medium">{order.purchaseOrderDetails?.length || 0}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Tổng số lượng:</span>
+                                                <span className="font-medium">{totalQuantity.toLocaleString()}</span>
+                                            </div>
+                                            <div className="border-t pt-3">
+                                                <div className="flex justify-between">
+                                                    <span className="text-lg font-semibold">Tổng tiền:</span>
+                                                    <span className="text-lg font-bold text-blue-600">
+                                                        {formatCurrency(totalAmount)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
                             {/* Order Details */}
                             <Card>
@@ -211,78 +257,39 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
 
                         {/* Right Column - Summary */}
                         <div className="space-y-6">
-                            {/* Supplier Info */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <User className="h-4 w-4" />
-                                        Nhà cung cấp
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-2">
-                                        <div>
-                                            <div className="font-medium">{order.supplier?.name}</div>
-                                            <div className="text-sm text-gray-500">Mã: {order.supplier?.supplierCode}</div>
-                                        </div>
-                                        {order.supplier?.email && (
-                                            <div className="text-sm text-gray-600">{order.supplier.email}</div>
-                                        )}
-                                        {order.supplier?.phone && (
-                                            <div className="text-sm text-gray-600">{order.supplier.phone}</div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Order Summary */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4" />
-                                        Tổng kết đơn hàng
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Số mặt hàng:</span>
-                                            <span className="font-medium">{order.purchaseOrderDetails?.length || 0}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Tổng số lượng:</span>
-                                            <span className="font-medium">{totalQuantity.toLocaleString()}</span>
-                                        </div>
-                                        <div className="border-t pt-3">
-                                            <div className="flex justify-between">
-                                                <span className="text-lg font-semibold">Tổng tiền:</span>
-                                                <span className="text-lg font-bold text-blue-600">
-                                                    {formatCurrency(totalAmount)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
                             {/* Actions */}
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Thao tác</CardTitle>
+                                    <CardTitle>Thao tác nhanh</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <PurchaseOrderActions
+                                        order={{
+                                            purchaseOrderId: order.purchaseOrderId,
+                                            status: order.status,
+                                            importStatus: order.importStatus
+                                        }}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            {/* Additional Actions */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Xuất báo cáo</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    <Button variant="outline" className="w-full">
+                                    {/* TODO: Implement print functionality */}
+                                    <Button variant="outline" className="w-full" disabled>
                                         In đơn nhập hàng
                                     </Button>
-                                    <Button variant="outline" className="w-full">
+                                    {/* TODO: Implement export functionality */}
+                                    <Button variant="outline" className="w-full" disabled>
                                         Xuất Excel
                                     </Button>
-                                    {order.status === 'PENDING' && (
-                                        // TODO: Implement cancel order functionality
-                                        <Button variant="destructive" className="w-full">
-                                            Hủy đơn hàng
-                                        </Button>
-                                    )}
+                                    <p className="text-xs text-gray-500 text-center mt-2">
+                                        Chức năng sẽ được triển khai sau
+                                    </p>
                                 </CardContent>
                             </Card>
                         </div>

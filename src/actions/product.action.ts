@@ -985,23 +985,493 @@ export async function bulkImportProducts(data: {
     }
 }
 
-// TODO: delete related variants
-export async function deleteProductById(productId: string) {
+// Kiểm tra khả năng xóa sản phẩm trước khi thực hiện
+export async function checkProductDeletability(productId: string) {
     try {
-        const deleted = await prisma.product.delete({
-            where: { productId: BigInt(productId) }
-        })
+        if (!productId) {
+            throw new Error('Product ID là bắt buộc');
+        }
+
+        const product = await prisma.product.findUnique({
+            where: { productId: BigInt(productId) },
+            include: {
+                variants: {
+                    include: {
+                        inventory: true,
+                        orderDetails: {
+                            include: {
+                                order: {
+                                    select: {
+                                        orderCode: true,
+                                        createdAt: true
+                                    }
+                                }
+                            }
+                        },
+                        purchaseOrderDetails: {
+                            include: {
+                                purchaseOrder: {
+                                    select: {
+                                        purchaseOrderCode: true,
+                                        createdAt: true
+                                    }
+                                }
+                            }
+                        },
+                    }
+                }
+            }
+        });
+
+        if (!product) {
+            return {
+                success: false,
+                message: 'Sản phẩm không tồn tại'
+            };
+        }
+
+        const issues = [];
+        const warnings = [];
+
+        // Kiểm tra đơn hàng
+        const orders = product.variants.flatMap(v => v.orderDetails.map(od => od.order));
+        if (orders.length > 0) {
+            issues.push({
+                type: 'ORDERS_EXIST',
+                message: `Sản phẩm đã có ${orders.length} đơn hàng liên quan`,
+                details: orders.slice(0, 5).map(o => `${o.orderCode} (${new Date(o.createdAt).toLocaleDateString()})`),
+                severity: 'error'
+            });
+        }
+
+        // Kiểm tra đơn nhập hàng
+        const purchaseOrders = product.variants.flatMap(v => v.purchaseOrderDetails.map(pod => pod.purchaseOrder));
+        if (purchaseOrders.length > 0) {
+            issues.push({
+                type: 'PURCHASE_ORDERS_EXIST',
+                message: `Sản phẩm đã có ${purchaseOrders.length} đơn nhập hàng liên quan`,
+                details: purchaseOrders.slice(0, 5).map(po => `${po.purchaseOrderCode} (${new Date(po.createdAt).toLocaleDateString()})`),
+                severity: 'error'
+            });
+        }
+
+        // Kiểm tra tồn kho
+        const stockVariants = product.variants.filter(v => v.inventory && v.inventory.currentStock > 0);
+        if (stockVariants.length > 0) {
+            warnings.push({
+                type: 'STOCK_EXISTS',
+                message: `Sản phẩm còn tồn kho`,
+                details: stockVariants.map(v => `${v.variantName}: ${v.inventory!.currentStock} ${v.unit}`),
+                severity: 'warning'
+            });
+        }
+
+        const canDelete = issues.length === 0;
+        const hasWarnings = warnings.length > 0;
+
         return {
             success: true,
-            message: "Product deleted successfully",
-            data: deleted
+            canDelete,
+            hasWarnings,
+            product: {
+                productId: product.productId.toString(),
+                name: product.name,
+                variantCount: product.variants.length
+            },
+            issues,
+            warnings,
+            message: canDelete
+                ? (hasWarnings ? 'Có thể xóa nhưng cần lưu ý' : 'Có thể xóa an toàn')
+                : 'Không thể xóa do có dữ liệu liên quan'
+        };
+
+    } catch (error) {
+        console.error('Error checking product deletability:', error);
+        return {
+            success: false,
+            message: `Lỗi kiểm tra: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`
+        };
+    }
+}
+
+export async function deleteProductById(productId: string) {
+    try {
+        // Validation
+        if (!productId) {
+            throw new Error('Product ID là bắt buộc');
         }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Kiểm tra sản phẩm có tồn tại không
+            const product = await tx.product.findUnique({
+                where: { productId: BigInt(productId) },
+                include: {
+                    variants: {
+                        include: {
+                            inventory: true,
+                            orderDetails: true,
+                            purchaseOrderDetails: true,
+                            fromConversions: true,
+                            toConversions: true,
+                            warranty: true,
+                            ReportInventory: true,
+                        }
+                    }
+                }
+            });
+
+            if (!product) {
+                throw new Error('Sản phẩm không tồn tại');
+            }
+
+            // 2. Kiểm tra ràng buộc nghiệp vụ
+            const hasOrders = product.variants.some(variant => variant.orderDetails.length > 0);
+            if (hasOrders) {
+                throw new Error('Không thể xóa sản phẩm đã có đơn hàng. Hãy kiểm tra lại dữ liệu đơn hàng liên quan.');
+            }
+
+            const hasPurchaseOrders = product.variants.some(variant => variant.purchaseOrderDetails.length > 0);
+            if (hasPurchaseOrders) {
+                throw new Error('Không thể xóa sản phẩm đã có đơn nhập hàng. Hãy kiểm tra lại dữ liệu nhập hàng liên quan.');
+            }
+
+            // 3. Kiểm tra stock còn lại
+            const hasStock = product.variants.some(variant =>
+                variant.inventory && variant.inventory.currentStock > 0
+            );
+            if (hasStock) {
+                const stockInfo = product.variants
+                    .filter(v => v.inventory && v.inventory.currentStock > 0)
+                    .map(v => `${v.variantName}: ${v.inventory!.currentStock} ${v.unit}`)
+                    .join(', ');
+                throw new Error(`Không thể xóa sản phẩm còn tồn kho: ${stockInfo}. Hãy xuất hết hàng trước khi xóa.`);
+            }
+
+            // 4. Thu thập thông tin để trả về
+            const deletionInfo = {
+                productId: product.productId.toString(),
+                productName: product.name,
+                variantCount: product.variants.length,
+                deletedData: {
+                    variants: product.variants.length,
+                    inventories: product.variants.filter(v => v.inventory).length,
+                    conversions: product.variants.reduce((acc, v) => acc + v.fromConversions.length + v.toConversions.length, 0),
+                    warranties: product.variants.filter(v => v.warranty).length,
+                    reportRecords: product.variants.reduce((acc, v) => acc + v.ReportInventory.length, 0),
+                }
+            };
+
+            // 5. Xóa dữ liệu theo thứ tự (Prisma cascade sẽ xử lý một phần)
+            // Xóa báo cáo inventory trước
+            for (const variant of product.variants) {
+                if (variant.ReportInventory.length > 0) {
+                    await tx.reportInventory.deleteMany({
+                        where: { variantId: variant.variantId }
+                    });
+                }
+            }
+
+            // Xóa unit conversions
+            for (const variant of product.variants) {
+                await tx.unitConversion.deleteMany({
+                    where: {
+                        OR: [
+                            { fromVariantId: variant.variantId },
+                            { toVariantId: variant.variantId }
+                        ]
+                    }
+                });
+            }
+
+            // Xóa warranty
+            for (const variant of product.variants) {
+                if (variant.warranty) {
+                    await tx.warranty.delete({
+                        where: { variantId: variant.variantId }
+                    });
+                }
+            }
+
+            // Xóa inventory
+            for (const variant of product.variants) {
+                if (variant.inventory) {
+                    await tx.inventory.delete({
+                        where: { variantId: variant.variantId }
+                    });
+                }
+            }
+
+            // Xóa product variants
+            await tx.productVariant.deleteMany({
+                where: { productId: BigInt(productId) }
+            });
+
+            // Cuối cùng xóa product
+            const deletedProduct = await tx.product.delete({
+                where: { productId: BigInt(productId) }
+            });
+
+            return {
+                deletedProduct,
+                deletionInfo
+            };
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        // Serialize BigInt
+        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        ));
+
+        return {
+            success: true,
+            message: `Đã xóa thành công sản phẩm "${serialized.deletionInfo.productName}" cùng với ${serialized.deletionInfo.variantCount} variants và dữ liệu liên quan`,
+            data: serialized.deletionInfo
+        };
+
     } catch (error) {
         console.error('Error deleting product:', error);
         return {
             success: false,
-            message: `Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`
+            message: `Không thể xóa sản phẩm: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`
+        };
+    }
+}
+
+// Xóa sản phẩm với tùy chọn force (xóa cả dữ liệu liên quan)
+export async function forceDeleteProductById(productId: string, options?: {
+    deleteOrders?: boolean;
+    deletePurchaseOrders?: boolean;
+    allowStockDeletion?: boolean;
+}) {
+    try {
+        if (!productId) {
+            throw new Error('Product ID là bắt buộc');
         }
+
+        const {
+            deleteOrders = false,
+            deletePurchaseOrders = false,
+            allowStockDeletion = false
+        } = options || {};
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Kiểm tra sản phẩm có tồn tại không
+            const product = await tx.product.findUnique({
+                where: { productId: BigInt(productId) },
+                include: {
+                    variants: {
+                        include: {
+                            inventory: true,
+                            orderDetails: {
+                                include: {
+                                    order: true
+                                }
+                            },
+                            purchaseOrderDetails: {
+                                include: {
+                                    purchaseOrder: true
+                                }
+                            },
+                            fromConversions: true,
+                            toConversions: true,
+                            warranty: true,
+                            ReportInventory: true,
+                        }
+                    }
+                }
+            });
+
+            if (!product) {
+                throw new Error('Sản phẩm không tồn tại');
+            }
+
+            const deletionStats = {
+                productName: product.name,
+                variants: product.variants.length,
+                orders: 0,
+                purchaseOrders: 0,
+                stockValue: 0,
+                relatedData: {
+                    inventories: 0,
+                    conversions: 0,
+                    warranties: 0,
+                    reportRecords: 0,
+                }
+            };
+
+            // Xóa OrderDetails và Orders nếu được phép
+            if (deleteOrders) {
+                for (const variant of product.variants) {
+                    if (variant.orderDetails.length > 0) {
+                        // Collect order IDs to delete
+                        const orderIds = [...new Set(variant.orderDetails.map(od => od.orderId))];
+
+                        // Delete order details first
+                        await tx.orderDetail.deleteMany({
+                            where: { variantId: variant.variantId }
+                        });
+
+                        // Delete orders that have no other details
+                        for (const orderId of orderIds) {
+                            const remainingDetails = await tx.orderDetail.count({
+                                where: { orderId }
+                            });
+
+                            if (remainingDetails === 0) {
+                                await tx.order.delete({
+                                    where: { orderId }
+                                });
+                                deletionStats.orders++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Xóa PurchaseOrderDetails và PurchaseOrders nếu được phép
+            if (deletePurchaseOrders) {
+                for (const variant of product.variants) {
+                    if (variant.purchaseOrderDetails.length > 0) {
+                        // Collect purchase order IDs to delete
+                        const purchaseOrderIds = [...new Set(variant.purchaseOrderDetails.map(pod => pod.purchaseOrderId))];
+
+                        // Delete purchase order details first
+                        await tx.purchaseOrderDetail.deleteMany({
+                            where: { variantId: variant.variantId }
+                        });
+
+                        // Delete purchase orders that have no other details
+                        for (const purchaseOrderId of purchaseOrderIds) {
+                            const remainingDetails = await tx.purchaseOrderDetail.count({
+                                where: { purchaseOrderId }
+                            });
+
+                            if (remainingDetails === 0) {
+                                await tx.purchaseOrder.delete({
+                                    where: { purchaseOrderId }
+                                });
+                                deletionStats.purchaseOrders++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Kiểm tra và xử lý stock
+            if (!allowStockDeletion) {
+                const hasStock = product.variants.some(variant =>
+                    variant.inventory && variant.inventory.currentStock > 0
+                );
+                if (hasStock) {
+                    const stockInfo = product.variants
+                        .filter(v => v.inventory && v.inventory.currentStock > 0)
+                        .map(v => `${v.variantName}: ${v.inventory!.currentStock} ${v.unit}`)
+                        .join(', ');
+                    throw new Error(`Không thể xóa sản phẩm còn tồn kho: ${stockInfo}. Sử dụng allowStockDeletion=true để xóa cả tồn kho.`);
+                }
+            } else {
+                // Tính tổng giá trị stock bị mất
+                deletionStats.stockValue = product.variants.reduce((total, variant) => {
+                    if (variant.inventory && variant.inventory.currentStock > 0) {
+                        return total + (variant.inventory.currentStock * variant.importPrice);
+                    }
+                    return total;
+                }, 0);
+            }
+
+            // Xóa báo cáo inventory
+            for (const variant of product.variants) {
+                if (variant.ReportInventory.length > 0) {
+                    await tx.reportInventory.deleteMany({
+                        where: { variantId: variant.variantId }
+                    });
+                    deletionStats.relatedData.reportRecords += variant.ReportInventory.length;
+                }
+            }
+
+            // Xóa unit conversions
+            for (const variant of product.variants) {
+                const conversionCount = variant.fromConversions.length + variant.toConversions.length;
+                await tx.unitConversion.deleteMany({
+                    where: {
+                        OR: [
+                            { fromVariantId: variant.variantId },
+                            { toVariantId: variant.variantId }
+                        ]
+                    }
+                });
+                deletionStats.relatedData.conversions += conversionCount;
+            }
+
+            // Xóa warranty
+            for (const variant of product.variants) {
+                if (variant.warranty) {
+                    await tx.warranty.delete({
+                        where: { variantId: variant.variantId }
+                    });
+                    deletionStats.relatedData.warranties++;
+                }
+            }
+
+            // Xóa inventory
+            for (const variant of product.variants) {
+                if (variant.inventory) {
+                    await tx.inventory.delete({
+                        where: { variantId: variant.variantId }
+                    });
+                    deletionStats.relatedData.inventories++;
+                }
+            }
+
+            // Xóa product variants
+            await tx.productVariant.deleteMany({
+                where: { productId: BigInt(productId) }
+            });
+
+            // Cuối cùng xóa product
+            await tx.product.delete({
+                where: { productId: BigInt(productId) }
+            });
+
+            return deletionStats;
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        // Serialize BigInt
+        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        ));
+
+        return {
+            success: true,
+            message: `Đã force delete thành công sản phẩm "${serialized.productName}" cùng với tất cả dữ liệu liên quan`,
+            data: serialized,
+            warnings: [
+                ...(serialized.orders > 0 ? [`Đã xóa ${serialized.orders} đơn hàng`] : []),
+                ...(serialized.purchaseOrders > 0 ? [`Đã xóa ${serialized.purchaseOrders} đơn nhập hàng`] : []),
+                ...(serialized.stockValue > 0 ? [`Đã xóa tồn kho trị giá ${serialized.stockValue.toLocaleString()} VNĐ`] : []),
+            ]
+        };
+
+    } catch (error) {
+        console.error('Error force deleting product:', error);
+        return {
+            success: false,
+            message: `Không thể force delete sản phẩm: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`
+        };
     }
 }
 

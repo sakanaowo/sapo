@@ -76,16 +76,13 @@ export default function PurchaseOrdersClient({
     const getStatusBadge = (status: string, importStatus?: string) => {
         const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
             'PENDING': { label: 'Chờ xử lý', variant: 'outline' },
-            'CONFIRMED': { label: 'Đã xác nhận', variant: 'default' },
-            'SHIPPED': { label: 'Đang vận chuyển', variant: 'secondary' },
-            'DELIVERED': { label: 'Đã giao', variant: 'default' },
+            'COMPLETED': { label: 'Hoàn thành', variant: 'default' },
             'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
         };
 
         const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
             'PENDING': { label: 'Chưa nhập', variant: 'outline' },
-            'PARTIAL': { label: 'Nhập một phần', variant: 'secondary' },
-            'COMPLETED': { label: 'Đã nhập hoàn tất', variant: 'default' },
+            'IMPORTED': { label: 'Đã nhập kho', variant: 'default' },
             'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
         };
 
@@ -93,7 +90,7 @@ export default function PurchaseOrdersClient({
         const importInfo = importStatusMap[importStatus || ''] || null;
 
         return (
-            <div className="flex gap-1">
+            <div className="grid grid-cols-1 gap-1">
                 <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                 {importInfo && (
                     <Badge variant={importInfo.variant} className="text-xs">
@@ -151,15 +148,13 @@ export default function PurchaseOrdersClient({
 
                     <div className="flex gap-2">
                         <Select value={selectedStatus} onValueChange={handleStatusChange}>
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="w-[140px]">
                                 <SelectValue placeholder="Trạng thái" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+                                <SelectItem value="ALL">Tất cả</SelectItem>
                                 <SelectItem value="PENDING">Chờ xử lý</SelectItem>
-                                <SelectItem value="CONFIRMED">Đã xác nhận</SelectItem>
-                                <SelectItem value="SHIPPED">Đang vận chuyển</SelectItem>
-                                <SelectItem value="DELIVERED">Đã giao</SelectItem>
+                                <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
                                 <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                             </SelectContent>
                         </Select>

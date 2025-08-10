@@ -14,7 +14,7 @@ interface ProductDetailViewProps {
     product: Product;
 }
 
-
+// TODO: ACTIVE/INACTIVE toggle for product
 const ProductDetailView: React.FC<ProductDetailViewProps> = ({ product }) => {
     const [selectedVariant, setSelectedVariant] = useState<Variant>(product.variants[0]);
 
