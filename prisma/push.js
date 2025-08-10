@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // Read data JSON with error handling
 let data;
 try {
-    data = JSON.parse(fs.readFileSync('./prisma/products.json', 'utf8'));
+    data = JSON.parse(fs.readFileSync('./products.json', 'utf8'));
 } catch (error) {
     console.error('Error reading products.json:', error.message);
     console.error('Ensure products.json exists in F:\\code\\VSCode\\sapo\\prisma');

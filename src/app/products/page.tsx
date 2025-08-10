@@ -22,7 +22,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     try {
         // Gọi trực tiếp server action
         const data = await getProducts({ page, limit, search });
-
         return (
             <ProductsClient
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any

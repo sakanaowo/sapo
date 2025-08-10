@@ -25,3 +25,19 @@ export type Product = {
     tags: string[];
     variants: Variant[];
 };
+
+// Upload-related types
+export type UploadThingResponse = {
+    url: string;
+    fileUrl?: string;
+    uploadedBy?: string;
+    message?: string;
+    key?: string;
+    name?: string;
+    size?: number;
+};
+
+export type ImageUploadError = {
+    message: string;
+    code?: string;
+};

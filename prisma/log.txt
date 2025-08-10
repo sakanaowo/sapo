@@ -1,6 +1,6 @@
 --- LOG CHUYỂN ĐỔI DỮ LIỆU ---
-Tổng số dòng: 4899
+Tổng số dòng: 4980
 Headers: Tên sản phẩm*, Hình thức quản lý sản phẩm, Loại sản phẩm, Mô tả sản phẩm, Nhãn hiệu, Tags, Thuộc tính 1, Giá trị thuộc tính 1, Thuộc tính 2, Giá trị thuộc tính 2, Thuộc tính 3, Giá trị thuộc tính 3, Tên phiên bản sản phẩm, Mã SKU*, Barcode, Khối lượng, Đơn vị khối lượng, Ảnh đại diện, Đơn vị, Số ngày cảnh báo hết hạn, Áp dụng bảo hành, Chính sách bảo hành, Áp dụng thuế, Giá áp dụng thuế, Thuế đầu vào (%), Thuế đầu ra (%), LC_CN1_Tồn kho ban đầu*, LC_CN1_Giá vốn khởi tạo*, LC_CN1_Tồn tối thiểu, LC_CN1_Tồn tối đa, LC_CN1_Điểm lưu kho, PL_Giá bán lẻ, PL_Giá nhập, PL_Giá bán buôn
 JSON đã được ghi vào file: products.json
-Thời gian: 7/6/2025, 7:59:11 AM
+Thời gian: 7/29/2025, 7:11:53 PM
 

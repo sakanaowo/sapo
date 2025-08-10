@@ -14,24 +14,22 @@ import {
 } from "lucide-react"
 
 import { NavMain } from "@/components/sidebar/nav-main"
-import { NavProjects } from "@/components/sidebar/nav-projects"
 import { NavUser } from "@/components/sidebar/nav-user"
-// import { TeamSwitcher } from "@/components/team-switcher"
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
     SidebarRail,
-    SidebarTrigger
+    SidebarTrigger,
+    useSidebar
 } from "@/components/ui/sidebar"
-
 
 // Sample data for sidebar
 const data = {
     user: {
-        name: "Admin User",
-        email: "admin@example.com",
+        name: "Guest",
+        email: "guest@example.com",
         avatar: "https://i.pinimg.com/736x/57/f7/86/57f7862d043f8f27844387ec61c59ccb.jpg",
     },
     teams: [
@@ -77,26 +75,10 @@ const data = {
                     title: "Danh sách sản phẩm",
                     url: "/products",
                 },
-                // {
-                //     title: "Quản lý kho",
-                //     url: "/products/inventory",
-                // },
-                // {
-                //     title: "Đặt hàng nhập",
-                //     url: "/products/purchase-orders",
-                // },
                 {
                     title: "Nhập hàng",
                     url: "/products/purchase-orders",
                 },
-                // {
-                //     title: "Kiểm hàng",
-                //     url: "/products/inspect",
-                // },
-                // {
-                //     title: "Chuyển hàng",
-                //     url: "/products/transfer",
-                // },
                 {
                     title: "Nhà cung cấp",
                     url: "/products/suppliers",
@@ -149,13 +131,13 @@ const data = {
                 },
             ],
         },
-    ],
-    projects: [
         {
-            name: "POS",
+            title: "POS",
             url: "/pos",
             icon: Store,
         },
+    ],
+    projects: [
         {
             name: "Cấu hình",
             url: "/settings",
@@ -163,32 +145,29 @@ const data = {
         },
     ],
 }
-interface AppSidebarProps {
-    user: {
-        adminId: string;
-        username: string;
-        email: string | null;
-        firstName: string | null;
-        lastName: string | null;
-        avatar: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    } | null;
-}
 
-export function AppSidebar({ user }: AppSidebarProps) {
+
+export function AppSidebar() {
+    const { toggleSidebar } = useSidebar();
+
     return (
         <Sidebar collapsible="icon" >
             <SidebarHeader>
-                {/* <TeamSwitcher teams={data.teams} /> */}
                 <SidebarTrigger />
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent
+                className="cursor-pointer"
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                        toggleSidebar();
+                    }
+                }}
+            >
                 <NavMain items={data.navMain} />
-                <NavProjects projects={data.projects} />
+                {/* <NavProjects projects={data.projects} /> */}
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={user} />
+                <NavUser />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>

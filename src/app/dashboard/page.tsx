@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 function DashboardPage() {
     return (
         <>
-            <Under_Construction />
+            <Under_Construction title="Dashboard" />
         </>
     )
 }
