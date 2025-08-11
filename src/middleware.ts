@@ -1,68 +1,34 @@
-// import { clerkMiddleware } from '@clerk/nextjs/server';
-
-// export default clerkMiddleware();
-
-// export const config = {
-//   matcher: [
-//     // Skip Next.js internals and all static files, unless found in search params
-//     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-//     // Always run for API routes
-//     '/(api|trpc)(.*)',
-//   ],
-// };
-
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/login(.*)',
   '/api/webhook(.*)',
-  '/'
+  '/',
+  '/api/uploadthing(.*)'
 ]);
 
-const isUploadThingRoute = createRouteMatcher(['/api/uploadthing(.*)']);
-
 export default clerkMiddleware(async (auth, req) => {
-  const { pathname } = req.nextUrl;
+  const { userId } = await auth();
+  const url = req.nextUrl;
 
-  // Allow public routes
-  if (isPublicRoute(req)) {
-    return NextResponse.next();
+  // 1) Đã đăng nhập mà vào /login → chuyển hướng ngay, không render /login
+  if (url.pathname.startsWith('/login') && userId) {
+    const dest = url.searchParams.get('redirect') ?? '/dashboard';
+    return NextResponse.redirect(new URL(dest, url));
   }
 
-  // Allow UploadThing routes
-  if (isUploadThingRoute(req)) {
-    return NextResponse.next();
-  }
+  // 2) Cho qua các route public
+  if (isPublicRoute(req)) return NextResponse.next();
 
-  // Bypass cho static files
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname.startsWith('/.well-known') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Protect all other routes
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      console.log('❌ No authenticated user, redirecting to login');
-      const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    console.log('✅ Authenticated user:', userId);
-    return NextResponse.next();
-  } catch (error) {
-    console.error('Middleware auth error:', error);
-    const loginUrl = new URL('/login', req.url);
+  // 3) Bảo vệ các route còn lại
+  if (!userId) {
+    const loginUrl = new URL('/login', url);
+    loginUrl.searchParams.set('redirect', url.pathname + url.search);
     return NextResponse.redirect(loginUrl);
   }
+
+  return NextResponse.next();
 });
 
 export const config = {
