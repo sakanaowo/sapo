@@ -36,7 +36,7 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useSidebarActions } from "@/store/sidebar-store"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/store/useAuth"
 
 export function NavUser() {
     const { isMobile } = useSidebar();

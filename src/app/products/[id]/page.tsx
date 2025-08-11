@@ -1,5 +1,5 @@
 import { getProductById } from '@/actions/product.action'
-import ProductDetailView from '@/components/products/product-detail-view';
+import ProductDetailView from '@/components/products/detail/product-detail-view';
 import { notFound } from 'next/navigation';
 import React from 'react'
 

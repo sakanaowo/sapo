@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import ProductDetailHeader from './product-detail-header';
 import ProductVariantList from './product-variant-list';
 import ProductVariantDetails from './product-variant-details';
-import { Card, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Product, Variant } from '../../lib/type/type';
+import { Card, CardContent } from '../../ui/card';
+import { Badge } from '../../ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
+import { Product, Variant } from '../../../lib/type/type';
 
 
 interface ProductDetailViewProps {
