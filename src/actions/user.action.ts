@@ -12,7 +12,7 @@ export async function syncUser() {
             return null;
         }
 
-        console.log('Syncing user:', userId);
+        // console.log('Syncing user:', userId);
 
         // Check existing user
         const existingUser = await prisma.admin.findUnique({
@@ -20,7 +20,7 @@ export async function syncUser() {
         });
 
         if (existingUser) {
-            console.log('User found:', existingUser.username);
+            // console.log('User found:', existingUser.username);
             return {
                 ...existingUser,
                 adminId: existingUser.adminId.toString(),
@@ -38,7 +38,7 @@ export async function syncUser() {
             }
         });
 
-        console.log('New user created:', newUser.username);
+        // console.log('New user created:', newUser.username);
         return {
             ...newUser,
             adminId: newUser.adminId.toString(),

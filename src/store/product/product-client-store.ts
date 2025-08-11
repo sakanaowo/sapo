@@ -97,7 +97,7 @@ export function useProductClientStore({
         try {
             setError(undefined);
             const newData = await getProducts({ page, limit: itemsPerPage, search });
-            console.log('Data in store before set:', JSON.stringify(newData, null, 2));
+            // console.log('Data in store before set:', JSON.stringify(newData, null, 2));
             setData(newData as ProductsData);
             setCurrentPage(page);
             updateURL(page, search);

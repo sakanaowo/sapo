@@ -186,8 +186,8 @@ export function useSupplierStore() {
                 status: formData.status as 'ACTIVE' | 'INACTIVE' | 'PENDING',
             };
 
-            const result = await createSupplier(submitData);
-            console.log("Supplier created successfully:", result);
+            await createSupplier(submitData);
+            // console.log("Supplier created successfully:", result);
             toast.success("Nhà cung cấp đã được tạo thành công!");
             router.push("/products/suppliers");
         } catch (error) {

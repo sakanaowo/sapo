@@ -408,7 +408,7 @@ export function usePosStore() {
 
     // Barcode scanning
     const handleBarcodeScanned = useCallback((scannedBarcode: string) => {
-        console.log('Barcode scanned:', scannedBarcode);
+        // console.log('Barcode scanned:', scannedBarcode);
         setLastScanTime(Date.now());
 
         const foundProduct = products.find(product =>
@@ -462,7 +462,8 @@ export function usePosStore() {
                     handleBarcodeScanned(scannedBarcode);
                 },
                 onScanError: (error: Event) => {
-                    console.log('Scan error:', error);
+                    // console.log('Scan error:', error);
+                    toast.error(`Lỗi khi quét mã vạch: ${error}`);
                 }
             });
 
