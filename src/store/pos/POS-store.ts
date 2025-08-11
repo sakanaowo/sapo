@@ -291,7 +291,7 @@ export function usePosStore() {
                     order.id === targetOrder.id
                         ? {
                             ...order,
-                            products: [...order.products, newCartProduct],
+                            products: [newCartProduct, ...order.products],
                             total: order.total + newCartProduct.price
                         }
                         : order
