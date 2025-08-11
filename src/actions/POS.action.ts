@@ -74,24 +74,24 @@ export async function getProductsForDisplay(): Promise<ProductForDisplay[]> {
     }
 }
 
-const formatInvoiceData = (data: InvoiceData): string => {
-    const { logo, storeName, address, phoneNumber, products, totalAmount, additionalMessages } = data;
+// const formatInvoiceData = (data: InvoiceData): string => {
+//     const { logo, storeName, address, phoneNumber, products, totalAmount, additionalMessages } = data;
 
-    let invoice = "";
-    invoice += `Logo: ${logo}\n\n`;
-    invoice += `${storeName}\n`;
-    invoice += `${address}\n`;
-    invoice += `Phone: ${phoneNumber}\n\n`;
-    invoice += "Products:\n";
-    products.forEach(product => {
-        invoice += `${product.name} (SKU: ${product.SKU}) - ${product.quantity} x ${product.price.toLocaleString('vi-VN')}₫ = ${product.amount.toLocaleString('vi-VN')}₫\n`;
-    });
-    invoice += `\nTotal: ${totalAmount.toLocaleString('vi-VN')}₫\n`;
-    if (additionalMessages) {
-        invoice += `\n${additionalMessages}\n`;
-    }
-    return invoice;
-};
+//     let invoice = "";
+//     invoice += `Logo: ${logo}\n\n`;
+//     invoice += `${storeName}\n`;
+//     invoice += `${address}\n`;
+//     invoice += `Phone: ${phoneNumber}\n\n`;
+//     invoice += "Products:\n";
+//     products.forEach(product => {
+//         invoice += `${product.name} (SKU: ${product.SKU}) - ${product.quantity} x ${product.price.toLocaleString('vi-VN')}₫ = ${product.amount.toLocaleString('vi-VN')}₫\n`;
+//     });
+//     invoice += `\nTotal: ${totalAmount.toLocaleString('vi-VN')}₫\n`;
+//     if (additionalMessages) {
+//         invoice += `\n${additionalMessages}\n`;
+//     }
+//     return invoice;
+// };
 
 export async function printInvoice(invoiceData: InvoiceData) {
     const printer = new ThermalPrinter({
@@ -140,6 +140,6 @@ export async function printInvoice(invoiceData: InvoiceData) {
     await printer.execute();
     printer.clear();
 
-    console.log("Printing invoice:\n", formatInvoiceData(invoiceData));
+    // console.log("Printing invoice:\n", formatInvoiceData(invoiceData));
     return { success: true, message: 'Đã gửi lệnh in hóa đơn' };
 }
