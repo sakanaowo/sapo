@@ -4,7 +4,7 @@ import React from 'react';
 import {
     AlertDialog,
     AlertDialogAction,
-    AlertDialogCancel,
+    // AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
@@ -22,7 +22,8 @@ const EditProductUnsavedWarning: React.FC = () => {
         resetForm,
         selectedVariantId,
         pendingVariantId,
-        switchToVariant
+        switchToVariant,
+        saveChanges,
     } = useEditProductStore();
 
     const handleDiscard = () => {
@@ -49,11 +50,14 @@ const EditProductUnsavedWarning: React.FC = () => {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setShowUnsavedWarning(false)}>
-                        Hủy
-                    </AlertDialogCancel>
+                    {/* <AlertDialogCancel onClick={() => setShowUnsavedWarning(false)}>
+                        Hủy bỏ thay 
+                    </AlertDialogCancel> */}
                     <AlertDialogAction onClick={handleDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Bỏ qua thay đổi
+                    </AlertDialogAction>
+                    <AlertDialogAction onClick={saveChanges} className=" text-white hover:bg-blue-500/90">
+                        Lưu thay đổi
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

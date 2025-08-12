@@ -28,6 +28,7 @@ const EditProductHeader: React.FC = () => {
         try {
             await saveChanges();
             toast.success('Đã lưu thành công!');
+            router.back();
         } catch (error) {
             console.error('Failed to save:', error);
             toast.error('Lưu thất bại. Vui lòng thử lại.');

@@ -12,6 +12,8 @@ export type Variant = {
     wholesalePrice: number;
     importPrice: number;
     taxApplied: boolean;
+    inputTax?: number;
+    outputTax?: number;
     fromConversions: any[];
     toConversions: any[];
 };

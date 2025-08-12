@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+// import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, Plus, Search, MoreHorizontal, FileDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import AddProductDialog from "./new-product-dialog";
@@ -193,7 +193,7 @@ export default function ProductsClient({
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-12">
-                                            <Checkbox />
+                                            {/* <Checkbox /> */}
                                         </TableHead>
                                         <TableHead>Tên sản phẩm</TableHead>
                                         <TableHead>Danh mục</TableHead>
@@ -212,7 +212,7 @@ export default function ProductsClient({
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-12">
-                                            <Checkbox />
+                                            {/* <Checkbox /> */}
                                         </TableHead>
                                         <TableHead>Tên sản phẩm</TableHead>
                                         <TableHead>Danh mục</TableHead>
@@ -226,7 +226,7 @@ export default function ProductsClient({
                                     {data.data.map((product) => (
                                         <TableRow key={product.productId} className="cursor-pointer hover:bg-muted/50">
                                             <TableCell>
-                                                <Checkbox />
+                                                {/* <Checkbox /> */}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center space-x-3">

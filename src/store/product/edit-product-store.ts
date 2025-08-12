@@ -48,6 +48,8 @@ interface EditProductFormData {
     wholesalePrice?: number;
     importPrice?: number;
     taxApplied: boolean;
+    inputTax?: number;
+    outputTax?: number;
 }
 
 interface EditProductState {
@@ -101,6 +103,8 @@ const createInitialFormData = (variant?: Variant, product?: Product): EditProduc
             wholesalePrice: 0,
             importPrice: 0,
             taxApplied: false,
+            inputTax: 0,
+            outputTax: 0,
         };
     }
 
@@ -121,6 +125,8 @@ const createInitialFormData = (variant?: Variant, product?: Product): EditProduc
         wholesalePrice: variant.wholesalePrice || 0,
         importPrice: variant.importPrice || 0,
         taxApplied: variant.taxApplied,
+        inputTax: variant.inputTax || 0,
+        outputTax: variant.outputTax || 0,
     };
 };
 
@@ -240,7 +246,9 @@ export const useEditProductStore = create<EditProductState>((set, get) => ({
             current.retailPrice !== (original.retailPrice || 0) ||
             current.wholesalePrice !== (original.wholesalePrice || 0) ||
             current.importPrice !== (original.importPrice || 0) ||
-            current.taxApplied !== original.taxApplied;
+            current.taxApplied !== original.taxApplied ||
+            current.inputTax !== (original.inputTax || 0) ||
+            current.outputTax !== (original.outputTax || 0);
 
         set({ hasChanges: hasProductChanges || hasVariantChanges });
     },
@@ -349,6 +357,12 @@ export const useEditProductStore = create<EditProductState>((set, get) => ({
             }
             if (current.taxApplied !== originalVariant.taxApplied) {
                 variantUpdates.taxApplied = current.taxApplied;
+            }
+            if (current.inputTax !== (originalVariant.inputTax || 0)) {
+                variantUpdates.inputTax = current.inputTax;
+            }
+            if (current.outputTax !== (originalVariant.outputTax || 0)) {
+                variantUpdates.outputTax = current.outputTax;
             }
 
             // Call API with properly structured data
