@@ -17,7 +17,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { SupplierSelect } from "@/components/suppliers/SupplierSelect";
 
 
-// TODO: implement instant confirm, auto select supplier
+
 export default function CreateProductPage() {
     const router = useRouter();
 

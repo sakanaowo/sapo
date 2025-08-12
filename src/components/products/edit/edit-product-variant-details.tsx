@@ -2,17 +2,16 @@
 
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X } from 'lucide-react';
 import { useEditProductStore } from '@/store/product/edit-product-store';
 import { useUploadThing } from '@/lib/uploadthing';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 const EditFieldRow: React.FC<{
     label: string;
@@ -181,76 +180,101 @@ const EditProductVariantDetails: React.FC = () => {
                             />
                         </div>
 
-                        <div className="flex items-center space-x-2 pt-2">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="tax-applied"
-                                    checked={formData.taxApplied}
-                                    onCheckedChange={(checked) => updateFormField('taxApplied', !!checked)}
-                                />
-                                <Label htmlFor="tax-applied" className="text-sm font-medium">
-                                    Áp dụng thuế
-                                </Label>
-                            </div>
-                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>
 
             <TabsContent value="pricing" className="h-full">
                 <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Thông tin giá & thuế</CardTitle>
+                    {/* <CardHeader>
+                        <CardTitle className="text-lg">Thông tin giá</CardTitle>
                         <CardDescription>
                             Cập nhật giá bán lẻ, giá bán sỉ và giá nhập
                         </CardDescription>
-                    </CardHeader>
+                    </CardHeader> */}
                     <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 gap-6">
-                            <div className="space-y-4">
-                                <EditFieldRow label="Giá bán lẻ">
-                                    <Input
-                                        type="number"
-                                        value={formData.retailPrice || ''}
-                                        onChange={(e) => updateFormField('retailPrice', Number(e.target.value) || 0)}
-                                        className="w-32 h-8 text-sm text-right"
-                                        placeholder="0"
-                                    />
-                                </EditFieldRow>
-                                <EditFieldRow label="Giá bán sỉ">
-                                    <Input
-                                        type="number"
-                                        value={formData.wholesalePrice || ''}
-                                        onChange={(e) => updateFormField('wholesalePrice', Number(e.target.value) || 0)}
-                                        className="w-32 h-8 text-sm text-right"
-                                        placeholder="0"
-                                    />
-                                </EditFieldRow>
-                                <EditFieldRow label="Giá nhập">
-                                    <Input
-                                        type="number"
-                                        value={formData.importPrice || ''}
-                                        onChange={(e) => updateFormField('importPrice', Number(e.target.value) || 0)}
-                                        className="w-32 h-8 text-sm text-right"
-                                        placeholder="0"
-                                    />
-                                </EditFieldRow>
+                        <div className="grid grid-cols-3 gap-6 h-full">
+                            {/* Phần giá - chiếm 2/3 */}
+                            <div className="col-span-2 space-y-4">
+                                <h4 className="font-semibold text-sm">Thông tin giá</h4>
+                                <div className="space-y-4">
+                                    <EditFieldRow label="Giá bán lẻ">
+                                        <Input
+                                            type="number"
+                                            value={formData.retailPrice || ''}
+                                            onChange={(e) => updateFormField('retailPrice', Number(e.target.value) || 0)}
+                                            className="w-32 h-8 text-sm text-right"
+                                            placeholder="0"
+                                        />
+                                    </EditFieldRow>
+                                    <EditFieldRow label="Giá bán sỉ">
+                                        <Input
+                                            type="number"
+                                            value={formData.wholesalePrice || ''}
+                                            onChange={(e) => updateFormField('wholesalePrice', Number(e.target.value) || 0)}
+                                            className="w-32 h-8 text-sm text-right"
+                                            placeholder="0"
+                                        />
+                                    </EditFieldRow>
+                                    <EditFieldRow label="Giá nhập">
+                                        <Input
+                                            type="number"
+                                            value={formData.importPrice || ''}
+                                            onChange={(e) => updateFormField('importPrice', Number(e.target.value) || 0)}
+                                            className="w-32 h-8 text-sm text-right"
+                                            placeholder="0"
+                                        />
+                                    </EditFieldRow>
+                                </div>
                             </div>
 
-                            <Separator />
-
-                            <div className="space-y-4">
-                                <h4 className="font-semibold text-sm">Tính năng</h4>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
+                            {/* Phần thuế - chiếm 1/3 */}
+                            <div className="col-span-1 space-y-4">
+                                <h4 className="font-semibold text-sm">Thuế</h4>
+                                <div className="flex items-center justify-between p-3 bg-gray-50/80 border border-gray-200 rounded-lg">
+                                    <div>
+                                        <Label className="text-sm font-medium text-gray-900">Áp thuế</Label>
+                                        <p className="text-xs text-gray-600">Bật để áp thuế cho sản phẩm này</p>
+                                    </div>
+                                    <Switch
                                         id="tax-applied-pricing"
                                         checked={formData.taxApplied}
-                                        onCheckedChange={(checked) => updateFormField('taxApplied', !!checked)}
+                                        onCheckedChange={(checked) => updateFormField('taxApplied', checked)}
                                     />
-                                    <Label htmlFor="tax-applied-pricing" className="text-sm">
-                                        Áp dụng thuế cho sản phẩm này
-                                    </Label>
                                 </div>
+
+                                {formData.taxApplied && (
+                                    <div className="space-y-3 pt-2 p-3 bg-indigo-50/50 border border-indigo-200 rounded-lg">
+                                        <div>
+                                            <Label htmlFor="inputTax" className="text-xs font-medium text-gray-700">Thuế đầu vào (%)</Label>
+                                            <Input
+                                                id="inputTax"
+                                                type="number"
+                                                value={formData.inputTax || 0}
+                                                onChange={(e) => updateFormField('inputTax', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 h-8 text-xs border-gray-300 w-full"
+                                                min="0"
+                                                max="100"
+                                                step="0.1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="outputTax" className="text-xs font-medium text-gray-700">Thuế đầu ra (%)</Label>
+                                            <Input
+                                                id="outputTax"
+                                                type="number"
+                                                value={formData.outputTax || 0}
+                                                onChange={(e) => updateFormField('outputTax', parseFloat(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="mt-1 h-8 text-xs border-gray-300 w-full"
+                                                min="0"
+                                                max="100"
+                                                step="0.1"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </CardContent>
