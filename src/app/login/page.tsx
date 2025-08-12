@@ -5,13 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
 
-export default async function LoginPage() {
-    // Kiểm tra nếu user đã đăng nhập thì redirect về dashboard
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {
+    const params = await searchParams;
     const user = await currentUser();
+    if (user) redirect(params?.redirect ?? '/dashboard');
 
-    if (user) {
-        redirect('/dashboard');
-    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">

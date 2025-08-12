@@ -113,8 +113,8 @@ export default function CreateProductPage() {
                 ),
             };
 
-            const res = await addOneProduct(submitData);
-            console.log("Product created successfully:", res);
+            await addOneProduct(submitData);
+            // console.log("Product created successfully:", res);
             toast.success("Tạo sản phẩm thành công!");
             resetForm();
             router.push("/products");

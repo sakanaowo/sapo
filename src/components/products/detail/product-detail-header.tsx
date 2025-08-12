@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import DeleteProductButton from './DeleteProductButton';
+import DeleteProductButton from '../DeleteProductButton';
 
 
 interface ProductDetailHeaderProps {

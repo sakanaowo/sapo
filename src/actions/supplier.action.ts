@@ -21,7 +21,7 @@ export async function getAllSuppliers(): Promise<SupplierSelectOption[]> {
         // Check cache first (1 hour TTL)
         const cached = await redis.get(cacheKey);
         if (cached) {
-            console.log('Suppliers loaded from cache');
+            // console.log('Suppliers loaded from cache');
             return JSON.parse(cached);
         }
 
@@ -50,14 +50,11 @@ export async function getAllSuppliers(): Promise<SupplierSelectOption[]> {
             status: supplier.status || "",
         }));
 
-        // const serialized = JSON.parse(JSON.stringify(suppliers, (key, value) =>
-        //     typeof value === 'bigint' ? value.toString() : value
-        // ));
 
         // Cache for 1 hour (3600 seconds)
         await redis.setEx(cacheKey, 3600, JSON.stringify(serializedSuppliers));
 
-        console.log('Suppliers loaded from database and cached');
+        // console.log('Suppliers loaded from database and cached');
         return serializedSuppliers;
     } catch (error) {
         console.error('Error fetching suppliers:', error);
@@ -121,7 +118,7 @@ export async function createSupplier(data: Supplier) {
         // Clear cache after creating new supplier
         try {
             await redis.del('suppliers-all-select');
-            console.log('Supplier cache cleared after creation');
+            // console.log('Supplier cache cleared after creation');
         } catch (cacheError) {
             console.error('Error clearing supplier cache:', cacheError);
         }

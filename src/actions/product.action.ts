@@ -1475,3 +1475,156 @@ export async function forceDeleteProductById(productId: string, options?: {
     }
 }
 
+type UpdateProductRequest = {
+    productId: string | number | bigint;
+
+    product?: {
+        name?: string;
+        description?: string | null;
+        brand?: string | null;
+        productType?: string | null;
+        tags?: string[] | null; // sẽ join bằng dấu phẩy
+    };
+
+    variant?: {
+        variantId: string | number | bigint;
+        sku?: string;
+        barcode?: string | null;
+        variantName?: string;
+        weight?: number;
+        weightUnit?: string;
+        unit?: string;
+        imageUrl?: string | null;
+        retailPrice?: number;
+        wholesalePrice?: number;
+        importPrice?: number;
+        taxApplied?: boolean;
+        inputTax?: number;
+        outputTax?: number;
+
+        inventory?: {
+            minStock?: number;
+            maxStock?: number;
+            warehouseLocation?: string | null;
+        };
+    };
+};
+
+export async function updateProductAction(payload: UpdateProductRequest) {
+    try {
+        const productId = BigInt(payload.productId);
+
+        return await prisma.$transaction(async (tx) => {
+            // (1) Cập nhật bảng product (nếu có)
+            if (payload.product) {
+                const { name, description, brand, productType, tags } = payload.product;
+
+                // Only include fields that are actually provided
+                const updateData: Record<string, string | null> = {};
+
+                if (name !== undefined) updateData.name = name.trim();
+                if (description !== undefined) updateData.description = description?.trim() || null;
+                if (brand !== undefined) updateData.brand = brand?.trim() || null;
+                if (productType !== undefined) updateData.productType = productType || null;
+                if (tags !== undefined) {
+                    updateData.tags = tags && tags.length ? tags.map(t => t.trim()).join(',') : null;
+                }
+
+                // Only update if there are fields to update
+                if (Object.keys(updateData).length > 0) {
+                    await tx.product.update({
+                        where: { productId },
+                        data: updateData,
+                    });
+                }
+            }
+
+            // (2) Cập nhật variant (nếu có)
+            if (payload.variant) {
+                const vId = BigInt(payload.variant.variantId);
+
+                // Lấy variant hiện tại + inventory để biết có phải base variant không
+                const current = await tx.productVariant.findUnique({
+                    where: { variantId: vId },
+                    include: { inventory: true },
+                });
+
+                if (!current) throw new Error('Variant không tồn tại');
+                if (current.productId !== productId)
+                    throw new Error('Variant không thuộc về product này');
+
+                // Nếu đổi SKU => check duplicate
+                if (payload.variant.sku && payload.variant.sku.trim() !== current.sku.trim()) {
+                    const dup = await tx.productVariant.findFirst({
+                        where: { sku: payload.variant.sku.trim() },
+                        select: { variantId: true },
+                    });
+                    if (dup) throw new Error('SKU đã tồn tại');
+                }
+
+                const {
+                    sku,
+                    barcode,
+                    variantName,
+                    weight,
+                    weightUnit,
+                    unit,
+                    imageUrl,
+                    retailPrice,
+                    wholesalePrice,
+                    importPrice,
+                    taxApplied,
+                    inputTax,
+                    outputTax,
+                } = payload.variant;
+
+                await tx.productVariant.update({
+                    where: { variantId: vId },
+                    data: {
+                        ...(typeof sku !== 'undefined' ? { sku: sku.trim() } : {}),
+                        ...(typeof barcode !== 'undefined' ? { barcode: barcode?.trim() || null } : {}),
+                        ...(typeof variantName !== 'undefined' ? { variantName: variantName.trim() } : {}),
+                        ...(typeof weight !== 'undefined' ? { weight: Number(weight) || 0 } : {}),
+                        ...(typeof weightUnit !== 'undefined' ? { weightUnit } : {}),
+                        ...(typeof unit !== 'undefined' ? { unit: unit.trim() } : {}),
+                        ...(typeof imageUrl !== 'undefined' ? { imageUrl: imageUrl || null } : {}),
+                        ...(typeof retailPrice !== 'undefined' ? { retailPrice: Number(retailPrice) || 0 } : {}),
+                        ...(typeof wholesalePrice !== 'undefined' ? { wholesalePrice: Number(wholesalePrice) || 0 } : {}),
+                        ...(typeof importPrice !== 'undefined' ? { importPrice: Number(importPrice) || 0 } : {}),
+                        ...(typeof taxApplied !== 'undefined' ? { taxApplied: !!taxApplied } : {}),
+                        ...(typeof inputTax !== 'undefined' ? { inputTax: Number(inputTax) || 0 } : {}),
+                        ...(typeof outputTax !== 'undefined' ? { outputTax: Number(outputTax) || 0 } : {}),
+                    },
+                });
+
+                // Nếu là base variant (có inventory) và có yêu cầu update tồn kho
+                if (payload.variant.inventory && current.inventory) {
+                    const { minStock, maxStock, warehouseLocation } = payload.variant.inventory;
+                    await tx.inventory.update({
+                        where: { variantId: vId },
+                        data: {
+                            ...(typeof minStock !== 'undefined' ? { minStock: Number(minStock) || 0 } : {}),
+                            ...(typeof maxStock !== 'undefined' ? { maxStock: Number(maxStock) || 0 } : {}),
+                            ...(typeof warehouseLocation !== 'undefined'
+                                ? { warehouseLocation: warehouseLocation?.trim() || null }
+                                : {}),
+                        },
+                    });
+                }
+            }
+
+            // (3) Invalidate cache đơn giản
+            try {
+                await redis.flushAll();
+                console.log('Cache invalidated successfully');
+            } catch (cacheError) {
+                console.error('Error invalidating cache:', cacheError);
+            }
+
+            return { ok: true, productId: productId.toString() };
+        });
+    } catch (error) {
+        console.error('[updateProductAction] error:', error);
+        throw error;
+    }
+}
