@@ -2,6 +2,32 @@ import { create } from 'zustand';
 import { Product, Variant } from '../../lib/type/type';
 import { updateProductAction } from '@/actions/product.action';
 
+// Add type definitions for updates
+type ProductUpdateData = {
+    name?: string;
+    description?: string | null;
+    brand?: string | null;
+    productType?: string | null;
+    tags?: string[] | null;
+};
+
+type VariantUpdateData = {
+    variantId: string;
+    sku?: string;
+    barcode?: string | null;
+    variantName?: string;
+    weight?: number;
+    weightUnit?: string;
+    unit?: string;
+    imageUrl?: string | null;
+    retailPrice?: number;
+    wholesalePrice?: number;
+    importPrice?: number;
+    taxApplied?: boolean;
+    inputTax?: number;
+    outputTax?: number;
+};
+
 interface EditProductFormData {
     // Product basic info
     name: string;
@@ -251,18 +277,104 @@ export const useEditProductStore = create<EditProductState>((set, get) => ({
         set({ isSaving: true });
 
         try {
-            // TODO: Implement actual save logic with API calls
-            // This would involve updating both product and variant data
+            const original = state.originalProduct;
+            const originalVariant = state.originalVariant;
+            const current = state.formData;
 
-            // const res = await updateProductAction({
-            //     productId: state.originalProduct.productId,
-            //     variantId: state.originalVariant.variantId,
-            //     data: state.formData,
-            // });
+            // Validation
+            if (!current.name?.trim()) {
+                throw new Error('Tên sản phẩm không được để trống');
+            }
+            if (!current.sku?.trim()) {
+                throw new Error('Mã SKU không được để trống');
+            }
+            if (current.retailPrice !== undefined && current.retailPrice < 0) {
+                throw new Error('Giá bán lẻ không được âm');
+            }
+            if (current.weight !== undefined && current.weight < 0) {
+                throw new Error('Trọng lượng không được âm');
+            }
 
-            // Update original data with current form data
-            // In real implementation, you would get the updated data from the API response
+            // Prepare product updates (only changed fields)
+            const productUpdates: Partial<ProductUpdateData> = {};
+            if (current.name !== original.name) {
+                productUpdates.name = current.name;
+            }
+            if (current.description !== (original.description || '')) {
+                productUpdates.description = current.description || null;
+            }
+            if (current.brand !== (original.brand || '')) {
+                productUpdates.brand = current.brand || null;
+            }
+            if (current.productType !== (original.productType || '')) {
+                productUpdates.productType = current.productType || null;
+            }
+            if (JSON.stringify(current.tags || []) !== JSON.stringify(original.tags || [])) {
+                productUpdates.tags = current.tags || [];
+            }
+
+            // Prepare variant updates (only changed fields)
+            const variantUpdates: Partial<VariantUpdateData> & { variantId: string } = {
+                variantId: originalVariant.variantId
+            };
+            if (current.variantName !== originalVariant.variantName) {
+                variantUpdates.variantName = current.variantName;
+            }
+            if (current.sku !== originalVariant.sku) {
+                variantUpdates.sku = current.sku;
+            }
+            if (current.barcode !== (originalVariant.barcode || '')) {
+                variantUpdates.barcode = current.barcode || null;
+            }
+            if (current.weight !== originalVariant.weight) {
+                variantUpdates.weight = current.weight;
+            }
+            if (current.weightUnit !== originalVariant.weightUnit) {
+                variantUpdates.weightUnit = current.weightUnit;
+            }
+            if (current.unit !== originalVariant.unit) {
+                variantUpdates.unit = current.unit;
+            }
+            if (current.imageUrl !== (originalVariant.imageUrl || '')) {
+                variantUpdates.imageUrl = current.imageUrl || null;
+            }
+            if (current.retailPrice !== (originalVariant.retailPrice || 0)) {
+                variantUpdates.retailPrice = current.retailPrice;
+            }
+            if (current.wholesalePrice !== (originalVariant.wholesalePrice || 0)) {
+                variantUpdates.wholesalePrice = current.wholesalePrice;
+            }
+            if (current.importPrice !== (originalVariant.importPrice || 0)) {
+                variantUpdates.importPrice = current.importPrice;
+            }
+            if (current.taxApplied !== originalVariant.taxApplied) {
+                variantUpdates.taxApplied = current.taxApplied;
+            }
+
+            // Call API with properly structured data
+            const res = await updateProductAction({
+                productId: original.productId,
+                ...(Object.keys(productUpdates).length > 0 && { product: productUpdates }),
+                ...(Object.keys(variantUpdates).length > 1 && { variant: variantUpdates }) // > 1 because variantId is always included
+            });
+
+            if (!res || !res.ok) {
+                throw new Error('Failed to update product');
+            }
+
+            console.log(`Updated product ${original.productId} successfully`);
+
+            // Update original data with current form data after successful save
             set({
+                originalProduct: {
+                    ...original,
+                    ...productUpdates,
+                    tags: productUpdates.tags || original.tags || []
+                },
+                originalVariant: {
+                    ...originalVariant,
+                    ...variantUpdates
+                },
                 hasChanges: false,
                 isSaving: false,
             });

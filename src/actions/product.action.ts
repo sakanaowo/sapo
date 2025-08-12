@@ -1519,22 +1519,24 @@ export async function updateProductAction(payload: UpdateProductRequest) {
             if (payload.product) {
                 const { name, description, brand, productType, tags } = payload.product;
 
-                await tx.product.update({
-                    where: { productId },
-                    data: {
-                        ...(typeof name !== 'undefined' ? { name: name.trim() } : {}),
-                        ...(typeof description !== 'undefined'
-                            ? { description: description?.trim() || null }
-                            : {}),
-                        ...(typeof brand !== 'undefined' ? { brand: brand?.trim() || null } : {}),
-                        ...(typeof productType !== 'undefined'
-                            ? { productType: productType || null }
-                            : {}),
-                        ...(typeof tags !== 'undefined'
-                            ? { tags: tags && tags.length ? tags.map(t => t.trim()).join(',') : null }
-                            : {}),
-                    },
-                });
+                // Only include fields that are actually provided
+                const updateData: Record<string, string | null> = {};
+
+                if (name !== undefined) updateData.name = name.trim();
+                if (description !== undefined) updateData.description = description?.trim() || null;
+                if (brand !== undefined) updateData.brand = brand?.trim() || null;
+                if (productType !== undefined) updateData.productType = productType || null;
+                if (tags !== undefined) {
+                    updateData.tags = tags && tags.length ? tags.map(t => t.trim()).join(',') : null;
+                }
+
+                // Only update if there are fields to update
+                if (Object.keys(updateData).length > 0) {
+                    await tx.product.update({
+                        where: { productId },
+                        data: updateData,
+                    });
+                }
             }
 
             // (2) Cập nhật variant (nếu có)
@@ -1614,6 +1616,7 @@ export async function updateProductAction(payload: UpdateProductRequest) {
             // (3) Invalidate cache đơn giản
             try {
                 await redis.flushAll();
+                console.log('Cache invalidated successfully');
             } catch (cacheError) {
                 console.error('Error invalidating cache:', cacheError);
             }
