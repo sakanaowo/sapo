@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
 
-export default async function LoginPage({ searchParams }: { searchParams: { redirect?: string } }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {
+    const params = await searchParams;
     const user = await currentUser();
-    if (user) redirect(searchParams?.redirect ?? '/dashboard');
+    if (user) redirect(params?.redirect ?? '/dashboard');
 
 
     return (
