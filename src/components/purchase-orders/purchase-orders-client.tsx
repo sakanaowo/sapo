@@ -64,7 +64,7 @@ export default function PurchaseOrdersClient({
     });
 
     // Set initial filters
-    React.useEffect(() => {
+    useEffect(() => {
         if (initialStatus) {
             handleStatusChange(initialStatus);
         }
@@ -74,15 +74,15 @@ export default function PurchaseOrdersClient({
     }, [initialStatus, initialSupplierId, handleStatusChange, handleSupplierChange]);
 
     const getStatusBadge = (status: string, importStatus?: string) => {
-        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
             'PENDING': { label: 'Chờ xử lý', variant: 'outline' },
-            'COMPLETED': { label: 'Hoàn thành', variant: 'default' },
+            'COMPLETED': { label: 'Hoàn thành', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
             'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
         };
 
-        const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+        const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
             'PENDING': { label: 'Chưa nhập', variant: 'outline' },
-            'IMPORTED': { label: 'Đã nhập kho', variant: 'default' },
+            'IMPORTED': { label: 'Đã nhập kho', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
             'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
         };
 
@@ -91,9 +91,9 @@ export default function PurchaseOrdersClient({
 
         return (
             <div className="grid grid-cols-1 gap-1">
-                <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                <Badge variant={statusInfo.variant} className={statusInfo.className}>{statusInfo.label}</Badge>
                 {importInfo && (
-                    <Badge variant={importInfo.variant} className="text-xs">
+                    <Badge variant={importInfo.variant} className={`text-xs ${importInfo.className || ''}`}>
                         {importInfo.label}
                     </Badge>
                 )}
@@ -343,4 +343,4 @@ export default function PurchaseOrdersClient({
 }
 
 // Import React for useEffect
-import React from 'react';
+import React, { useEffect } from 'react';

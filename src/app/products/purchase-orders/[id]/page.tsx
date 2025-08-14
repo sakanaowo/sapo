@@ -51,15 +51,15 @@ const formatDate = (dateString: string) => {
 };
 
 const getStatusBadge = (status: string, importStatus?: string) => {
-    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
         'PENDING': { label: 'Chờ xử lý', variant: 'outline' },
-        'COMPLETED': { label: 'Hoàn thành', variant: 'default' },
+        'COMPLETED': { label: 'Hoàn thành', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
         'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
     };
 
-    const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
         'PENDING': { label: 'Chưa nhập', variant: 'outline' },
-        'IMPORTED': { label: 'Đã nhập kho', variant: 'default' },
+        'IMPORTED': { label: 'Đã nhập kho', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
         'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
     };
 
@@ -68,9 +68,9 @@ const getStatusBadge = (status: string, importStatus?: string) => {
 
     return (
         <div className="flex gap-2">
-            <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+            <Badge variant={statusInfo.variant} className={statusInfo.className}>{statusInfo.label}</Badge>
             {importInfo && (
-                <Badge variant={importInfo.variant}>
+                <Badge variant={importInfo.variant} className={importInfo.className}>
                     {importInfo.label}
                 </Badge>
             )}
