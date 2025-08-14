@@ -128,9 +128,9 @@ export default function CreateProductPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50/50">
+        <div className="min-h-screen bg-background">
             {/* Header */}
-            <div className="border-b bg-white shadow-sm">
+            <div className="border-b bg-card shadow-sm">
                 <div className="flex h-14 items-center justify-between px-6">
                     <div className="flex items-center gap-3">
                         <Link href="/products">
@@ -138,7 +138,7 @@ export default function CreateProductPage() {
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                             </Button>
                         </Link>
-                        <h1 className="text-xl font-semibold">Thêm sản phẩm</h1>
+                        <h1 className="text-xl font-semibold text-foreground">Thêm sản phẩm</h1>
                     </div>
                     <div className="flex items-center gap-2">
                         <Link href="/products">
@@ -174,11 +174,11 @@ export default function CreateProductPage() {
                         {/* Left Column - Main Info */}
                         <div className="lg:col-span-2 space-y-4">
                             {/* Thông tin chung & Variant */}
-                            <Card className="bg-white shadow-sm border border-gray-200/80 hover:shadow-md transition-shadow">
-                                <CardHeader className="pb-3 bg-gradient-to-r from-blue-50/50 to-white border-b border-blue-100">
-                                    <CardTitle className="text-lg text-gray-900">Thông tin sản phẩm</CardTitle>
+                            <Card className="bg-card shadow-sm border hover:shadow-md transition-shadow">
+                                <CardHeader className="pb-3 bg-gradient-to-r from-blue-50/50 to-card dark:from-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+                                    <CardTitle className="text-lg text-foreground">Thông tin sản phẩm</CardTitle>
                                 </CardHeader>
-                                <CardContent className="bg-white">
+                                <CardContent className="bg-card">&
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2">
                                             <Label htmlFor="name" className="text-sm font-medium text-gray-700">Tên sản phẩm *</Label>

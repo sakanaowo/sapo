@@ -122,14 +122,14 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
 
             {/* Hiển thị trạng thái hoàn thành */}
             {order.status === 'COMPLETED' && (
-                <div className="text-center text-green-600 font-medium py-2">
+                <div className="text-center text-green-600 dark:text-green-400 font-medium py-2">
                     ✅ Đơn hàng đã được xử lý hoàn tất
                 </div>
             )}
 
             {/* Hiển thị trạng thái đã hủy */}
             {order.status === 'CANCELLED' && (
-                <div className="text-center text-red-600 font-medium py-2">
+                <div className="text-center text-red-600 dark:text-red-400 font-medium py-2">
                     ❌ Đơn hàng đã bị hủy
                 </div>
             )}

@@ -112,13 +112,13 @@ export default function PurchaseOrdersClient({
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50/50">
+        <div className="flex flex-col h-full bg-background">
             {/* Header */}
-            <div className="border-b bg-white shadow-sm">
+            <div className="border-b bg-card shadow-sm">
                 <div className="flex h-14 items-center justify-between px-6">
                     <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-blue-600" />
-                        <h1 className="text-xl font-semibold">Đơn nhập hàng</h1>
+                        <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <h1 className="text-xl font-semibold text-foreground">Đơn nhập hàng</h1>
                         <Badge variant="secondary" className="ml-2">
                             {data.pagination.total} đơn
                         </Badge>
@@ -133,10 +133,10 @@ export default function PurchaseOrdersClient({
             </div>
 
             {/* Filters & Search */}
-            <div className="border-b bg-white px-6 py-4">
+            <div className="border-b bg-card px-6 py-4">
                 <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                             placeholder="Tìm kiếm theo mã đơn..."
                             value={searchTerm}
@@ -184,24 +184,24 @@ export default function PurchaseOrdersClient({
 
             {/* Error Display */}
             {error && (
-                <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-600 text-sm">{error}</p>
+                <div className="mx-6 mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="text-destructive text-sm">{error}</p>
                 </div>
             )}
 
             {/* Content */}
             <div className="flex-1 p-6">
-                <Card className="bg-white shadow-sm">
+                <Card className="bg-card shadow-sm">
                     <CardContent className="p-0">
                         {isPending ? (
                             <div className="flex items-center justify-center h-64">
-                                <div className="animate-pulse text-gray-500">Đang tải...</div>
+                                <div className="animate-pulse text-muted-foreground">Đang tải...</div>
                             </div>
                         ) : data.data.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                                <Package className="h-12 w-12 mb-4 text-gray-300" />
+                            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                                <Package className="h-12 w-12 mb-4 text-muted-foreground/50" />
                                 <p className="text-lg font-medium">Không có đơn nhập hàng</p>
-                                <p className="text-sm text-gray-400">
+                                <p className="text-sm text-muted-foreground/70">
                                     {searchTerm || selectedStatus ? 'Không tìm thấy đơn nào với bộ lọc hiện tại' : 'Tạo đơn nhập hàng đầu tiên của bạn'}
                                 </p>
                             </div>
@@ -223,7 +223,7 @@ export default function PurchaseOrdersClient({
                                     {data.data.map((order) => (
                                         <TableRow
                                             key={order.purchaseOrderId}
-                                            className="cursor-pointer hover:bg-gray-50"
+                                            className="cursor-pointer hover:bg-muted/50"
                                             onClick={() => navigateToPurchaseOrder(order.purchaseOrderId)}
                                         >
                                             <TableCell className="font-medium">
@@ -232,7 +232,7 @@ export default function PurchaseOrdersClient({
                                             <TableCell>
                                                 <div>
                                                     <div className="font-medium">{order.supplier.name}</div>
-                                                    <div className="text-sm text-gray-500">{order.supplier.supplierCode}</div>
+                                                    <div className="text-sm text-muted-foreground">{order.supplier.supplierCode}</div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -240,7 +240,7 @@ export default function PurchaseOrdersClient({
                                             </TableCell>
                                             <TableCell>
                                                 {order.importDate ? formatDate(order.importDate) : (
-                                                    <span className="text-gray-400">Chưa nhập</span>
+                                                    <span className="text-muted-foreground">Chưa nhập</span>
                                                 )}
                                             </TableCell>
                                             <TableCell>
@@ -249,7 +249,7 @@ export default function PurchaseOrdersClient({
                                             <TableCell>
                                                 <div className="text-center">
                                                     <div className="font-medium">{order.itemCount}</div>
-                                                    <div className="text-xs text-gray-500">
+                                                    <div className="text-xs text-muted-foreground">
                                                         {order.totalQuantity.toLocaleString()} sản phẩm
                                                     </div>
                                                 </div>
@@ -297,7 +297,7 @@ export default function PurchaseOrdersClient({
                 {/* Pagination */}
                 {data.pagination.totalPages > 1 && (
                     <div className="flex items-center justify-between mt-6">
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                             Hiển thị {data.data.length} trong tổng số {data.pagination.total} đơn nhập hàng
                         </div>
                         <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export default function PurchaseOrdersClient({
 
                             {generatePageNumbers().map((pageNum, index) => (
                                 pageNum === -1 ? (
-                                    <span key={index} className="px-2 text-gray-400">...</span>
+                                    <span key={index} className="px-2 text-muted-foreground">...</span>
                                 ) : (
                                     <Button
                                         key={pageNum}

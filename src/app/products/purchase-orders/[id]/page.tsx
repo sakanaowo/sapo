@@ -98,9 +98,9 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
         ) || 0;
 
         return (
-            <div className="min-h-screen bg-gray-50/50">
+            <div className="min-h-screen bg-background">
                 {/* Header */}
-                <div className="border-b bg-white shadow-sm">
+                <div className="border-b bg-card shadow-sm">
                     <div className="flex h-14 items-center justify-between px-6">
                         <div className="flex items-center gap-3">
                             <Link href="/products/purchase-orders">
@@ -109,8 +109,8 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                     Quay lại
                                 </Button>
                             </Link>
-                            <Package className="h-5 w-5 text-blue-600" />
-                            <h1 className="text-xl font-semibold">Chi tiết đơn nhập hàng</h1>
+                            <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <h1 className="text-xl font-semibold text-foreground">Chi tiết đơn nhập hàng</h1>
                         </div>
                     </div>
                 </div>
@@ -131,16 +131,16 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                 <CardContent>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-gray-400" />
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
                                             <div>
-                                                <div className="text-sm text-gray-500">Ngày tạo</div>
+                                                <div className="text-sm text-muted-foreground">Ngày tạo</div>
                                                 <div className="font-medium">{formatDate(order.createdAt)}</div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Package className="h-4 w-4 text-gray-400" />
+                                            <Package className="h-4 w-4 text-muted-foreground" />
                                             <div>
-                                                <div className="text-sm text-gray-500">Ngày nhập dự kiến</div>
+                                                <div className="text-sm text-muted-foreground">Ngày nhập dự kiến</div>
                                                 <div className="font-medium">
                                                     {order.importDate ? formatDate(order.importDate) : 'Chưa xác định'}
                                                 </div>
@@ -163,13 +163,13 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                         <div className="space-y-2">
                                             <div>
                                                 <div className="font-medium">{order.supplier?.name}</div>
-                                                <div className="text-sm text-gray-500">Mã: {order.supplier?.supplierCode}</div>
+                                                <div className="text-sm text-muted-foreground">Mã: {order.supplier?.supplierCode}</div>
                                             </div>
                                             {order.supplier?.email && (
-                                                <div className="text-sm text-gray-600">{order.supplier.email}</div>
+                                                <div className="text-sm text-muted-foreground">{order.supplier.email}</div>
                                             )}
                                             {order.supplier?.phone && (
-                                                <div className="text-sm text-gray-600">{order.supplier.phone}</div>
+                                                <div className="text-sm text-muted-foreground">{order.supplier.phone}</div>
                                             )}
                                         </div>
                                     </CardContent>
@@ -186,17 +186,17 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                     <CardContent>
                                         <div className="space-y-3">
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">Số mặt hàng:</span>
+                                                <span className="text-muted-foreground">Số mặt hàng:</span>
                                                 <span className="font-medium">{order.purchaseOrderDetails?.length || 0}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">Tổng số lượng:</span>
+                                                <span className="text-muted-foreground">Tổng số lượng:</span>
                                                 <span className="font-medium">{totalQuantity.toLocaleString()}</span>
                                             </div>
                                             <div className="border-t pt-3">
                                                 <div className="flex justify-between">
                                                     <span className="text-lg font-semibold">Tổng tiền:</span>
-                                                    <span className="text-lg font-bold text-blue-600">
+                                                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                                                         {formatCurrency(totalAmount)}
                                                     </span>
                                                 </div>
@@ -229,7 +229,7 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                                     <TableCell>
                                                         <div>
                                                             <div className="font-medium">{detail.variant?.product?.name}</div>
-                                                            <div className="text-sm text-gray-500">{detail.variant?.variantName}</div>
+                                                            <div className="text-sm text-muted-foreground">{detail.variant?.variantName}</div>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="font-mono text-sm">
@@ -287,7 +287,7 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                                     <Button variant="outline" className="w-full" disabled>
                                         Xuất Excel
                                     </Button>
-                                    <p className="text-xs text-gray-500 text-center mt-2">
+                                    <p className="text-xs text-muted-foreground text-center mt-2">
                                         Chức năng sẽ được triển khai sau
                                     </p>
                                 </CardContent>
