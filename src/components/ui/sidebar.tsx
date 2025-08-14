@@ -72,6 +72,24 @@ function SidebarProvider({
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
+
+  // Load sidebar state from cookie on mount
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const cookies = document.cookie.split(';')
+      const sidebarCookie = cookies.find(cookie =>
+        cookie.trim().startsWith(`${SIDEBAR_COOKIE_NAME}=`)
+      )
+
+      if (sidebarCookie) {
+        const value = sidebarCookie.split('=')[1]
+        const savedState = value === 'true'
+        if (savedState !== defaultOpen) {
+          _setOpen(savedState)
+        }
+      }
+    }
+  }, [defaultOpen])
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -569,7 +587,7 @@ function SidebarMenuAction({
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
+        "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className
       )}
       {...props}
