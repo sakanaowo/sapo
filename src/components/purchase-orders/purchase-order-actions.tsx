@@ -16,7 +16,8 @@ interface PurchaseOrderActionsProps {
 }
 
 export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProps) {
-    const [isUpdating, setIsUpdating] = useState(false);
+    const [isConfirming, setIsConfirming] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
     const router = useRouter();
 
     const handleConfirmAndImport = async () => {
@@ -25,7 +26,7 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
             return;
         }
 
-        setIsUpdating(true);
+        setIsConfirming(true);
         try {
             const result = await updatePurchaseOrderStatus(
                 order.purchaseOrderId,
@@ -43,7 +44,7 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
             console.error('Error confirming and importing order:', error);
             toast.error('Có lỗi xảy ra khi xử lý đơn hàng');
         } finally {
-            setIsUpdating(false);
+            setIsConfirming(false);
         }
     };
 
@@ -57,7 +58,7 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
             return;
         }
 
-        setIsUpdating(true);
+        setIsCancelling(true);
         try {
             const result = await updatePurchaseOrderStatus(
                 order.purchaseOrderId,
@@ -75,7 +76,7 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
             console.error('Error cancelling order:', error);
             toast.error('Có lỗi xảy ra khi hủy đơn hàng');
         } finally {
-            setIsUpdating(false);
+            setIsCancelling(false);
         }
     };
 
@@ -86,13 +87,13 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
                 <Button
                     size="sm"
                     onClick={handleConfirmAndImport}
-                    disabled={isUpdating}
+                    disabled={isConfirming || isCancelling}
                     className="w-full bg-green-600 hover:bg-green-700"
                 >
-                    {isUpdating ? (
+                    {isConfirming ? (
                         <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Đang xử lý...
+                            Đang xác nhận...
                         </>
                     ) : (
                         'Xác nhận và nhập kho'
@@ -106,10 +107,10 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
                     variant="destructive"
                     size="sm"
                     onClick={handleCancelOrder}
-                    disabled={isUpdating}
+                    disabled={isConfirming || isCancelling}
                     className="w-full"
                 >
-                    {isUpdating ? (
+                    {isCancelling ? (
                         <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Đang hủy...
@@ -122,14 +123,14 @@ export default function PurchaseOrderActions({ order }: PurchaseOrderActionsProp
 
             {/* Hiển thị trạng thái hoàn thành */}
             {order.status === 'COMPLETED' && (
-                <div className="text-center text-green-600 font-medium py-2">
-                    ✅ Đơn hàng đã được xử lý hoàn tất
+                <div className="text-center text-green-600 dark:text-green-400 font-medium py-2">
+                    Đơn hàng đã được xử lý
                 </div>
             )}
 
             {/* Hiển thị trạng thái đã hủy */}
             {order.status === 'CANCELLED' && (
-                <div className="text-center text-red-600 font-medium py-2">
+                <div className="text-center text-red-600 dark:text-red-400 font-medium py-2">
                     ❌ Đơn hàng đã bị hủy
                 </div>
             )}

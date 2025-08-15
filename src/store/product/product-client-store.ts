@@ -1,4 +1,4 @@
-import { useState, useTransition, useCallback } from 'react';
+import { useState, useTransition, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { getProducts } from '@/actions/product.action';
@@ -79,6 +79,14 @@ export function useProductClientStore({
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [currentPage, setCurrentPage] = useState(initialPage);
     const [error, setError] = useState(initialError);
+
+    // Sync state with props when they change (e.g., when navigating to products page)
+    useEffect(() => {
+        setData(initialData);
+        setSearchTerm(initialSearch);
+        setCurrentPage(initialPage);
+        setError(initialError);
+    }, [initialData, initialPage, initialSearch, initialError]);
 
     // Update URL without causing a full page reload
     const updateURL = useCallback((page: number, search: string) => {

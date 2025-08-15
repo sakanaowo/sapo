@@ -1,11 +1,13 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, Plus, Search, MoreHorizontal, Package, Filter, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { usePurchaseOrderClientStoreWithInit, type PurchaseOrdersData } from "@/store/product/purchase-order-client-store";
@@ -63,8 +65,33 @@ export default function PurchaseOrdersClient({
         initialError
     });
 
+    // State for managing selected items
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+
+    // Handlers for checkbox selection
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const allIds = new Set(data.data.map(order => order.purchaseOrderId));
+            setSelectedItems(allIds);
+        } else {
+            setSelectedItems(new Set());
+        }
+    };
+
+    const handleSelectItem = (id: string, checked: boolean) => {
+        const newSelected = new Set(selectedItems);
+        if (checked) {
+            newSelected.add(id);
+        } else {
+            newSelected.delete(id);
+        }
+        setSelectedItems(newSelected);
+    };
+
+    const isAllSelected = data.data.length > 0 && selectedItems.size === data.data.length;
+
     // Set initial filters
-    React.useEffect(() => {
+    useEffect(() => {
         if (initialStatus) {
             handleStatusChange(initialStatus);
         }
@@ -73,16 +100,21 @@ export default function PurchaseOrdersClient({
         }
     }, [initialStatus, initialSupplierId, handleStatusChange, handleSupplierChange]);
 
+    // Clear selected items when data changes
+    useEffect(() => {
+        setSelectedItems(new Set());
+    }, [data.data]);
+
     const getStatusBadge = (status: string, importStatus?: string) => {
-        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
             'PENDING': { label: 'Chờ xử lý', variant: 'outline' },
-            'COMPLETED': { label: 'Hoàn thành', variant: 'default' },
+            'COMPLETED': { label: 'Hoàn thành', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
             'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
         };
 
-        const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+        const importStatusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
             'PENDING': { label: 'Chưa nhập', variant: 'outline' },
-            'IMPORTED': { label: 'Đã nhập kho', variant: 'default' },
+            'IMPORTED': { label: 'Đã nhập kho', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
             'CANCELLED': { label: 'Đã hủy', variant: 'destructive' }
         };
 
@@ -91,9 +123,9 @@ export default function PurchaseOrdersClient({
 
         return (
             <div className="grid grid-cols-1 gap-1">
-                <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                <Badge variant={statusInfo.variant} className={statusInfo.className}>{statusInfo.label}</Badge>
                 {importInfo && (
-                    <Badge variant={importInfo.variant} className="text-xs">
+                    <Badge variant={importInfo.variant} className={`text-xs ${importInfo.className || ''}`}>
                         {importInfo.label}
                     </Badge>
                 )}
@@ -112,13 +144,13 @@ export default function PurchaseOrdersClient({
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50/50">
+        <div className="flex flex-col h-full bg-background">
             {/* Header */}
-            <div className="border-b bg-white shadow-sm">
+            <div className="border-b bg-card shadow-sm">
                 <div className="flex h-14 items-center justify-between px-6">
                     <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-blue-600" />
-                        <h1 className="text-xl font-semibold">Đơn nhập hàng</h1>
+                        <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <h1 className="text-xl font-semibold text-foreground">Đơn nhập hàng</h1>
                         <Badge variant="secondary" className="ml-2">
                             {data.pagination.total} đơn
                         </Badge>
@@ -133,10 +165,10 @@ export default function PurchaseOrdersClient({
             </div>
 
             {/* Filters & Search */}
-            <div className="border-b bg-white px-6 py-4">
+            <div className="border-b bg-card px-6 py-4">
                 <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                             placeholder="Tìm kiếm theo mã đơn..."
                             value={searchTerm}
@@ -184,24 +216,24 @@ export default function PurchaseOrdersClient({
 
             {/* Error Display */}
             {error && (
-                <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-600 text-sm">{error}</p>
+                <div className="mx-6 mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="text-destructive text-sm">{error}</p>
                 </div>
             )}
 
             {/* Content */}
             <div className="flex-1 p-6">
-                <Card className="bg-white shadow-sm">
+                <Card className="bg-card shadow-sm">
                     <CardContent className="p-0">
                         {isPending ? (
                             <div className="flex items-center justify-center h-64">
-                                <div className="animate-pulse text-gray-500">Đang tải...</div>
+                                <div className="animate-pulse text-muted-foreground">Đang tải...</div>
                             </div>
                         ) : data.data.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                                <Package className="h-12 w-12 mb-4 text-gray-300" />
+                            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                                <Package className="h-12 w-12 mb-4 text-muted-foreground/50" />
                                 <p className="text-lg font-medium">Không có đơn nhập hàng</p>
-                                <p className="text-sm text-gray-400">
+                                <p className="text-sm text-muted-foreground/70">
                                     {searchTerm || selectedStatus ? 'Không tìm thấy đơn nào với bộ lọc hiện tại' : 'Tạo đơn nhập hàng đầu tiên của bạn'}
                                 </p>
                             </div>
@@ -209,30 +241,62 @@ export default function PurchaseOrdersClient({
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Mã đơn</TableHead>
-                                        <TableHead>Nhà cung cấp</TableHead>
-                                        <TableHead>Ngày tạo</TableHead>
-                                        <TableHead>Ngày nhập</TableHead>
-                                        <TableHead>Trạng thái</TableHead>
-                                        <TableHead>Số mặt hàng</TableHead>
-                                        <TableHead>Tổng tiền</TableHead>
-                                        <TableHead className="w-12"></TableHead>
+                                        <TableHead className="w-12">
+                                            <Checkbox
+                                                className="w-4"
+                                                checked={isAllSelected}
+                                                onCheckedChange={handleSelectAll}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </TableHead>
+                                        <TableHead className="min-w-[140px]">Mã đơn</TableHead>
+                                        <TableHead className="min-w-[180px]">Nhà cung cấp</TableHead>
+                                        <TableHead className="min-w-[120px]">Ngày tạo</TableHead>
+                                        <TableHead className="min-w-[120px]">Ngày nhập</TableHead>
+                                        <TableHead className="min-w-[120px]">Trạng thái</TableHead>
+                                        <TableHead className="min-w-[100px] text-center">Số mặt hàng</TableHead>
+                                        <TableHead className="min-w-[120px] text-right">Tổng tiền</TableHead>
+                                        <TableHead className="w-12">
+                                            {selectedItems.size > 0 && (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem>
+                                                            {/* TODO: implement delete selected items */}
+                                                            Xóa đã chọn
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {data.data.map((order) => (
                                         <TableRow
                                             key={order.purchaseOrderId}
-                                            className="cursor-pointer hover:bg-gray-50"
+                                            className="cursor-pointer hover:bg-muted/50"
                                             onClick={() => navigateToPurchaseOrder(order.purchaseOrderId)}
                                         >
+                                            <TableCell>
+                                                <Checkbox
+                                                    className="w-4"
+                                                    checked={selectedItems.has(order.purchaseOrderId)}
+                                                    onCheckedChange={(checked) => handleSelectItem(order.purchaseOrderId, checked as boolean)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </TableCell>
                                             <TableCell className="font-medium">
                                                 {order.purchaseOrderCode}
                                             </TableCell>
                                             <TableCell>
                                                 <div>
                                                     <div className="font-medium">{order.supplier.name}</div>
-                                                    <div className="text-sm text-gray-500">{order.supplier.supplierCode}</div>
+                                                    <div className="text-sm text-muted-foreground">{order.supplier.supplierCode}</div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -240,16 +304,16 @@ export default function PurchaseOrdersClient({
                                             </TableCell>
                                             <TableCell>
                                                 {order.importDate ? formatDate(order.importDate) : (
-                                                    <span className="text-gray-400">Chưa nhập</span>
+                                                    <span className="text-muted-foreground">Chưa nhập</span>
                                                 )}
                                             </TableCell>
                                             <TableCell>
                                                 {getStatusBadge(order.status, order.importStatus)}
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="text-center">
+                                            <TableCell className="text-center">
+                                                <div>
                                                     <div className="font-medium">{order.itemCount}</div>
-                                                    <div className="text-xs text-gray-500">
+                                                    <div className="text-xs text-muted-foreground">
                                                         {order.totalQuantity.toLocaleString()} sản phẩm
                                                     </div>
                                                 </div>
@@ -297,7 +361,7 @@ export default function PurchaseOrdersClient({
                 {/* Pagination */}
                 {data.pagination.totalPages > 1 && (
                     <div className="flex items-center justify-between mt-6">
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                             Hiển thị {data.data.length} trong tổng số {data.pagination.total} đơn nhập hàng
                         </div>
                         <div className="flex items-center gap-2">
@@ -312,7 +376,7 @@ export default function PurchaseOrdersClient({
 
                             {generatePageNumbers().map((pageNum, index) => (
                                 pageNum === -1 ? (
-                                    <span key={index} className="px-2 text-gray-400">...</span>
+                                    <span key={index} className="px-2 text-muted-foreground">...</span>
                                 ) : (
                                     <Button
                                         key={pageNum}
@@ -342,5 +406,3 @@ export default function PurchaseOrdersClient({
     );
 }
 
-// Import React for useEffect
-import React from 'react';

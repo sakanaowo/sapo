@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link";
 import {
     BadgeCheck,
     Check,
@@ -184,7 +185,7 @@ export function NavUser() {
 
                             <DropdownMenuItem disabled={isLoading}>
                                 <Settings className="h-4 w-4" />
-                                <a href="/settings">Settings</a>
+                                <Link href="/settings">Settings</Link>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
 
