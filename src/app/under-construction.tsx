@@ -25,7 +25,7 @@ export default function Under_Construction({ title }: { title: string }) {
                                 Go back home
                             </Link>
                         </Button>
-                        <Link href="/" className="text-sm font-semibold text-foreground">
+                        <Link href="https://github.com/sakanaowo/sapo/issues/new" className="text-sm font-semibold text-foreground">
                             Contact support <span aria-hidden="true">&rarr;</span>
                         </Link>
                     </div>
