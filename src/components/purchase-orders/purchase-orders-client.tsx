@@ -1,11 +1,13 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, Plus, Search, MoreHorizontal, Package, Filter, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { usePurchaseOrderClientStoreWithInit, type PurchaseOrdersData } from "@/store/product/purchase-order-client-store";
@@ -63,6 +65,31 @@ export default function PurchaseOrdersClient({
         initialError
     });
 
+    // State for managing selected items
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+
+    // Handlers for checkbox selection
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const allIds = new Set(data.data.map(order => order.purchaseOrderId));
+            setSelectedItems(allIds);
+        } else {
+            setSelectedItems(new Set());
+        }
+    };
+
+    const handleSelectItem = (id: string, checked: boolean) => {
+        const newSelected = new Set(selectedItems);
+        if (checked) {
+            newSelected.add(id);
+        } else {
+            newSelected.delete(id);
+        }
+        setSelectedItems(newSelected);
+    };
+
+    const isAllSelected = data.data.length > 0 && selectedItems.size === data.data.length;
+
     // Set initial filters
     useEffect(() => {
         if (initialStatus) {
@@ -72,6 +99,11 @@ export default function PurchaseOrdersClient({
             handleSupplierChange(initialSupplierId);
         }
     }, [initialStatus, initialSupplierId, handleStatusChange, handleSupplierChange]);
+
+    // Clear selected items when data changes
+    useEffect(() => {
+        setSelectedItems(new Set());
+    }, [data.data]);
 
     const getStatusBadge = (status: string, importStatus?: string) => {
         const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
@@ -209,14 +241,38 @@ export default function PurchaseOrdersClient({
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Mã đơn</TableHead>
-                                        <TableHead>Nhà cung cấp</TableHead>
-                                        <TableHead>Ngày tạo</TableHead>
-                                        <TableHead>Ngày nhập</TableHead>
-                                        <TableHead>Trạng thái</TableHead>
-                                        <TableHead>Số mặt hàng</TableHead>
-                                        <TableHead>Tổng tiền</TableHead>
-                                        <TableHead className="w-12"></TableHead>
+                                        <TableHead className="w-12">
+                                            <Checkbox
+                                                className="w-4"
+                                                checked={isAllSelected}
+                                                onCheckedChange={handleSelectAll}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </TableHead>
+                                        <TableHead className="min-w-[140px]">Mã đơn</TableHead>
+                                        <TableHead className="min-w-[180px]">Nhà cung cấp</TableHead>
+                                        <TableHead className="min-w-[120px]">Ngày tạo</TableHead>
+                                        <TableHead className="min-w-[120px]">Ngày nhập</TableHead>
+                                        <TableHead className="min-w-[120px]">Trạng thái</TableHead>
+                                        <TableHead className="min-w-[100px] text-center">Số mặt hàng</TableHead>
+                                        <TableHead className="min-w-[120px] text-right">Tổng tiền</TableHead>
+                                        <TableHead className="w-12">
+                                            {selectedItems.size > 0 && (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem>
+                                                            {/* TODO: implement delete selected items */}
+                                                            Xóa đã chọn
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -226,6 +282,14 @@ export default function PurchaseOrdersClient({
                                             className="cursor-pointer hover:bg-muted/50"
                                             onClick={() => navigateToPurchaseOrder(order.purchaseOrderId)}
                                         >
+                                            <TableCell>
+                                                <Checkbox
+                                                    className="w-4"
+                                                    checked={selectedItems.has(order.purchaseOrderId)}
+                                                    onCheckedChange={(checked) => handleSelectItem(order.purchaseOrderId, checked as boolean)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </TableCell>
                                             <TableCell className="font-medium">
                                                 {order.purchaseOrderCode}
                                             </TableCell>
@@ -246,8 +310,8 @@ export default function PurchaseOrdersClient({
                                             <TableCell>
                                                 {getStatusBadge(order.status, order.importStatus)}
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="text-center">
+                                            <TableCell className="text-center">
+                                                <div>
                                                     <div className="font-medium">{order.itemCount}</div>
                                                     <div className="text-xs text-muted-foreground">
                                                         {order.totalQuantity.toLocaleString()} sản phẩm
@@ -342,5 +406,3 @@ export default function PurchaseOrdersClient({
     );
 }
 
-// Import React for useEffect
-import React, { useEffect } from 'react';
