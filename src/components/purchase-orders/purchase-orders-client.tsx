@@ -266,6 +266,12 @@ export default function PurchaseOrdersClient({
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuItem>
+                                                            {/* TODO: implement import multiple
+                                                                - checking dialog for import multiple
+                                                            */}
+                                                            Nhập nhiều
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem>
                                                             {/* TODO: implement delete selected items */}
                                                             Xóa đã chọn
                                                         </DropdownMenuItem>
