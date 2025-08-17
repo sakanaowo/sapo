@@ -178,7 +178,7 @@ export default function CreateProductPage() {
                                 <CardHeader className="pb-3 bg-gradient-to-r from-blue-50/50 to-card dark:from-blue-900/20 border-b border-blue-100 dark:border-blue-800">
                                     <CardTitle className="text-lg text-foreground">Thông tin sản phẩm</CardTitle>
                                 </CardHeader>
-                                <CardContent className="bg-card">&
+                                <CardContent className="bg-card">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2">
                                             <Label htmlFor="name" className="text-sm font-medium text-gray-700">Tên sản phẩm *</Label>
@@ -272,9 +272,15 @@ export default function CreateProductPage() {
                                                 <Input
                                                     id="weight"
                                                     type="number"
-                                                    value={formData.weight}
-                                                    onChange={(e) => updateFormData('weight', parseFloat(e.target.value) || 0)}
-                                                    placeholder="0"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={formData.weight === 0 ? '' : formData.weight}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        updateFormData('weight', value === '' ? 0 : parseFloat(value) || 0);
+                                                    }}
+                                                    onFocus={(e) => e.target.select()}
+                                                    placeholder="Nhập trọng lượng"
                                                     className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                                                 />
                                                 <select
@@ -332,9 +338,15 @@ export default function CreateProductPage() {
                                             <Input
                                                 id="retailPrice"
                                                 type="number"
-                                                value={formData.retailPrice}
-                                                onChange={(e) => updateFormData('retailPrice', parseFloat(e.target.value) || 0)}
-                                                placeholder="0"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.retailPrice === 0 ? '' : formData.retailPrice}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateFormData('retailPrice', value === '' ? 0 : parseFloat(value) || 0);
+                                                }}
+                                                onFocus={(e) => e.target.select()}
+                                                placeholder="Nhập giá bán lẻ"
                                                 className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
                                                 required
                                             />
@@ -344,9 +356,15 @@ export default function CreateProductPage() {
                                             <Input
                                                 id="importPrice"
                                                 type="number"
-                                                value={formData.importPrice}
-                                                onChange={(e) => updateFormData('importPrice', parseFloat(e.target.value) || 0)}
-                                                placeholder="0"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.importPrice === 0 ? '' : formData.importPrice}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateFormData('importPrice', value === '' ? 0 : parseFloat(value) || 0);
+                                                }}
+                                                onFocus={(e) => e.target.select()}
+                                                placeholder="Nhập giá nhập"
                                                 className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
                                             />
                                         </div>
@@ -355,9 +373,15 @@ export default function CreateProductPage() {
                                             <Input
                                                 id="wholesalePrice"
                                                 type="number"
-                                                value={formData.wholesalePrice}
-                                                onChange={(e) => updateFormData('wholesalePrice', parseFloat(e.target.value) || 0)}
-                                                placeholder="0"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.wholesalePrice === 0 ? '' : formData.wholesalePrice}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateFormData('wholesalePrice', value === '' ? 0 : parseFloat(value) || 0);
+                                                }}
+                                                onFocus={(e) => e.target.select()}
+                                                placeholder="Nhập giá buôn"
                                                 className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
                                             />
                                         </div>
@@ -405,9 +429,15 @@ export default function CreateProductPage() {
                                                     <div className="w-24">
                                                         <Input
                                                             type="number"
-                                                            value={conversion.conversionRate}
-                                                            onChange={(e) => updateUnitConversion(index, 'conversionRate', parseFloat(e.target.value) || 1)}
-                                                            placeholder="1"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={conversion.conversionRate === 1 ? '' : conversion.conversionRate}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                updateUnitConversion(index, 'conversionRate', value === '' ? 1 : parseFloat(value) || 1);
+                                                            }}
+                                                            onFocus={(e) => e.target.select()}
+                                                            placeholder="Tỷ lệ"
                                                             className="h-8 border-gray-300 bg-white"
                                                         />
                                                     </div>
@@ -472,9 +502,15 @@ export default function CreateProductPage() {
                                         <Input
                                             id="importQuantity"
                                             type="number"
-                                            value={formData.importQuantity}
-                                            onChange={(e) => updateFormData('importQuantity', parseFloat(e.target.value) || 0)}
-                                            placeholder="0"
+                                            min="0"
+                                            step="1"
+                                            value={formData.importQuantity === 0 ? '' : formData.importQuantity}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                updateFormData('importQuantity', value === '' ? 0 : parseFloat(value) || 0);
+                                            }}
+                                            onFocus={(e) => e.target.select()}
+                                            placeholder="Nhập số lượng"
                                             className="mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500/20"
                                             required
                                         />
@@ -508,9 +544,15 @@ export default function CreateProductPage() {
                                             <Input
                                                 id="minStock"
                                                 type="number"
-                                                value={formData.minStock}
-                                                onChange={(e) => updateFormData('minStock', parseFloat(e.target.value) || 0)}
-                                                placeholder="0"
+                                                min="0"
+                                                step="1"
+                                                value={formData.minStock === 0 ? '' : formData.minStock}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateFormData('minStock', value === '' ? 0 : parseFloat(value) || 0);
+                                                }}
+                                                onFocus={(e) => e.target.select()}
+                                                placeholder="Số lượng tối thiểu"
                                                 className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
                                             />
                                         </div>
@@ -519,9 +561,15 @@ export default function CreateProductPage() {
                                             <Input
                                                 id="maxStock"
                                                 type="number"
-                                                value={formData.maxStock}
-                                                onChange={(e) => updateFormData('maxStock', parseFloat(e.target.value) || 0)}
-                                                placeholder="0"
+                                                min="0"
+                                                step="1"
+                                                value={formData.maxStock === 0 ? '' : formData.maxStock}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateFormData('maxStock', value === '' ? 0 : parseFloat(value) || 0);
+                                                }}
+                                                onFocus={(e) => e.target.select()}
+                                                placeholder="Số lượng tối đa"
                                                 className="mt-1 border-gray-300 focus:border-orange-500 focus:ring-orange-500/20"
                                             />
                                         </div>

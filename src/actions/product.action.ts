@@ -1261,6 +1261,8 @@ export async function forceDeleteProductById(productId: string, options?: {
             allowStockDeletion = false
         } = options || {};
 
+        // console.log('Starting force delete for product:', productId, 'with options:', options);
+
         const result = await prisma.$transaction(async (tx) => {
             // Kiểm tra sản phẩm có tồn tại không
             const product = await tx.product.findUnique({
@@ -1292,6 +1294,8 @@ export async function forceDeleteProductById(productId: string, options?: {
                 throw new Error('Sản phẩm không tồn tại');
             }
 
+            // console.log('Found product:', product.name, 'with', product.variants.length, 'variants');
+
             const deletionStats = {
                 productName: product.name,
                 variants: product.variants.length,
@@ -1308,6 +1312,7 @@ export async function forceDeleteProductById(productId: string, options?: {
 
             // Xóa OrderDetails và Orders nếu được phép
             if (deleteOrders) {
+                // console.log('Deleting orders for', product.variants.length, 'variants...');
                 for (const variant of product.variants) {
                     if (variant.orderDetails.length > 0) {
                         // Collect order IDs to delete
@@ -1317,6 +1322,7 @@ export async function forceDeleteProductById(productId: string, options?: {
                         await tx.orderDetail.deleteMany({
                             where: { variantId: variant.variantId }
                         });
+                        // console.log('Deleted order details for variant:', variant.variantId);
 
                         // Delete orders that have no other details
                         for (const orderId of orderIds) {
@@ -1329,6 +1335,7 @@ export async function forceDeleteProductById(productId: string, options?: {
                                     where: { orderId }
                                 });
                                 deletionStats.orders++;
+                                // console.log('Deleted order:', orderId);
                             }
                         }
                     }
@@ -1337,6 +1344,7 @@ export async function forceDeleteProductById(productId: string, options?: {
 
             // Xóa PurchaseOrderDetails và PurchaseOrders nếu được phép
             if (deletePurchaseOrders) {
+                // console.log('Deleting purchase orders for', product.variants.length, 'variants...');
                 for (const variant of product.variants) {
                     if (variant.purchaseOrderDetails.length > 0) {
                         // Collect purchase order IDs to delete
@@ -1346,6 +1354,7 @@ export async function forceDeleteProductById(productId: string, options?: {
                         await tx.purchaseOrderDetail.deleteMany({
                             where: { variantId: variant.variantId }
                         });
+                        // console.log('Deleted purchase order details for variant:', variant.variantId);
 
                         // Delete purchase orders that have no other details
                         for (const purchaseOrderId of purchaseOrderIds) {
@@ -1358,6 +1367,7 @@ export async function forceDeleteProductById(productId: string, options?: {
                                     where: { purchaseOrderId }
                                 });
                                 deletionStats.purchaseOrders++;
+                                // console.log('Deleted purchase order:', purchaseOrderId);
                             }
                         }
                     }
@@ -1387,6 +1397,7 @@ export async function forceDeleteProductById(productId: string, options?: {
             }
 
             // Xóa báo cáo inventory
+            // console.log('Deleting report inventory records...');
             for (const variant of product.variants) {
                 if (variant.ReportInventory.length > 0) {
                     await tx.reportInventory.deleteMany({
@@ -1397,6 +1408,7 @@ export async function forceDeleteProductById(productId: string, options?: {
             }
 
             // Xóa unit conversions
+            // console.log('Deleting unit conversions...');
             for (const variant of product.variants) {
                 const conversionCount = variant.fromConversions.length + variant.toConversions.length;
                 await tx.unitConversion.deleteMany({
@@ -1441,6 +1453,9 @@ export async function forceDeleteProductById(productId: string, options?: {
             });
 
             return deletionStats;
+        }, {
+            timeout: 30000, // 30 seconds timeout
+            maxWait: 35000  // max wait 35 seconds
         });
 
         // Invalidate cache
@@ -1483,7 +1498,7 @@ type UpdateProductRequest = {
         description?: string | null;
         brand?: string | null;
         productType?: string | null;
-        tags?: string[] | null; // sẽ join bằng dấu phẩy
+        tags?: string[] | null;
     };
 
     variant?: {
