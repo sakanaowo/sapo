@@ -331,7 +331,14 @@ export async function getPurchaseOrders({
     dateFrom?: Date;
     dateTo?: Date;
 } = {}) {
+    const normalizedSearch = search.trim().toLowerCase();
+    const cacheKey = `purchaseOrders-page-${page}-limit-${limit}-status-${status}-supplierId-${supplierId}-search-${normalizedSearch ? normalizedSearch : ''}-dateFrom-${dateFrom}-dateTo-${dateTo}`;
     try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+
         // Build where clause
         const whereClause: {
             status?: string;
@@ -447,6 +454,8 @@ export async function getPurchaseOrders({
                 hasPrev: page > 1,
             },
         };
+
+        await redis.setEx(cacheKey, 3600, JSON.stringify(result));
 
         return result;
     } catch (error) {
@@ -593,7 +602,16 @@ export async function updatePurchaseOrderStatus(purchaseOrderId: string, status:
 }
 
 export async function getPurchaseOrderById(id: string) {
+    const cacheKey = `purchaseOrder-${id}`;
     try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            return {
+                success: true,
+                data: JSON.parse(cached),
+            };
+        }
+
         const purchaseOrder = await prisma.purchaseOrder.findUnique({
             where: { purchaseOrderId: BigInt(id) },
             include: {
@@ -632,6 +650,8 @@ export async function getPurchaseOrderById(id: string) {
         const serialized = JSON.parse(JSON.stringify(purchaseOrder, (key, value) =>
             typeof value === 'bigint' ? value.toString() : value
         ));
+
+        await redis.setEx(cacheKey, 3600, JSON.stringify(serialized));
 
         return {
             success: true,

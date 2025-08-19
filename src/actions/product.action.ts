@@ -29,6 +29,8 @@ interface PaginatedResult {
     };
 }
 
+// READ
+
 export async function getProducts({
     page = 1,
     limit = 20,
@@ -264,27 +266,7 @@ export async function flushAllCache() {
     }
 }
 
-/**
- * ===== INVENTORY & CONVERSION LOGIC =====
- * 
- * 1. CHỈ BASE VARIANT CÓ INVENTORY THỰC TẾ
- *    - Base variant: stock được lưu trong inventory table
- *    - Conversion variants: KHÔNG có inventory, chỉ là metadata
- * 
- * 2. STOCK CALCULATION
- *    - Base stock: Thực tế trong DB
- *    - Conversion stock: Tính toán = baseStock / conversionRate
- *    - VD: Base = 100 cái, rate = 12 → Conversion = 8 thùng
- * 
- * 3. PURCHASE ORDER
- *    - Chỉ tạo PO detail cho base variant
- *    - Import sẽ chỉ update stock của base variant
- *    - Conversion stock tự động cập nhật theo calculation
- * 
- * 4. SELLING
- *    - Có thể bán theo bất kỳ unit nào (base hoặc conversion)
- *    - Khi bán conversion unit, sẽ deduct từ base stock theo rate
- */
+// CREATE
 
 export async function addOneProduct(data: {
     name: string;
@@ -985,6 +967,8 @@ export async function bulkImportProducts(data: {
     }
 }
 
+// DELETE
+
 // Kiểm tra khả năng xóa sản phẩm trước khi thực hiện
 export async function checkProductDeletability(productId: string) {
     try {
@@ -1489,6 +1473,8 @@ export async function forceDeleteProductById(productId: string, options?: {
         };
     }
 }
+
+// UPDATE
 
 type UpdateProductRequest = {
     productId: string | number | bigint;
