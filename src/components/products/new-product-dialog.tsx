@@ -8,7 +8,7 @@ import {
     DialogTitle,
     DialogTrigger
 } from "@/components/ui/dialog";
-import { Plus, Edit, FileInput } from "lucide-react";
+import { Plus, Edit, FileUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -64,7 +64,7 @@ export default function AddProductDialog({
                             variant="outline"
                             className="w-full h-20 flex-col gap-2 border-dashed border-2 hover:bg-muted/50"
                         >
-                            <FileInput className="h-6 w-6 text-blue-600" />
+                            <FileUp className="h-6 w-6 text-blue-600" />
                             <div className="text-center">
                                 <div className="font-medium">Nhập nhiều sản phẩm</div>
                             </div>
