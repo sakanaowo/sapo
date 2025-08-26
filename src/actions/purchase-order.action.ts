@@ -663,3 +663,524 @@ export async function getPurchaseOrderById(id: string) {
         throw new Error(`Failed to fetch purchase order: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
+
+export async function updateMultiplePurchaseOrdersStatus(
+    purchaseOrderIds: string[],
+    status: string,
+    importStatus?: string
+) {
+    try {
+        if (!purchaseOrderIds || purchaseOrderIds.length === 0) {
+            throw new Error('Danh sách Purchase Order ID không được rỗng');
+        }
+
+        // Validate status values
+        const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
+        const validImportStatuses = ['PENDING', 'IMPORTED'];
+
+        if (!validStatuses.includes(status)) {
+            throw new Error(`Trạng thái không hợp lệ: ${status}`);
+        }
+
+        if (importStatus && !validImportStatuses.includes(importStatus)) {
+            throw new Error(`Trạng thái nhập hàng không hợp lệ: ${importStatus}`);
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Kiểm tra tất cả Purchase Orders có tồn tại không
+            const existingPOs = await tx.purchaseOrder.findMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                select: {
+                    purchaseOrderId: true,
+                    purchaseOrderCode: true,
+                    status: true,
+                    importStatus: true
+                }
+            });
+
+            if (existingPOs.length !== purchaseOrderIds.length) {
+                const foundIds = existingPOs.map(po => po.purchaseOrderId.toString());
+                const missingIds = purchaseOrderIds.filter(id => !foundIds.includes(id));
+                throw new Error(`Không tìm thấy Purchase Orders với ID: ${missingIds.join(', ')}`);
+            }
+
+            // Kiểm tra logic nghiệp vụ
+            for (const po of existingPOs) {
+                // Không thể cập nhật PO đã hoàn thành
+                if (po.status === 'COMPLETED' && status !== 'COMPLETED') {
+                    throw new Error(`Purchase Order ${po.purchaseOrderCode} đã hoàn thành, không thể thay đổi trạng thái`);
+                }
+
+                // Không thể set import status = IMPORTED nếu status không phải COMPLETED
+                if (importStatus === 'IMPORTED' && status !== 'COMPLETED') {
+                    throw new Error(`Không thể set trạng thái nhập hàng thành công cho Purchase Order chưa hoàn thành: ${po.purchaseOrderCode}`);
+                }
+            }
+
+            // Chuẩn bị data để update
+            const updateData: Partial<{
+                status: string;
+                importStatus: string;
+                importDate: Date;
+                updatedAt: Date;
+            }> = {
+                status,
+                updatedAt: new Date()
+            };
+
+            if (importStatus) {
+                updateData.importStatus = importStatus;
+            }
+
+            if (status === 'COMPLETED') {
+                updateData.importDate = new Date();
+            }
+
+            // Thực hiện update
+            const updatedPOs = await tx.purchaseOrder.updateMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                data: updateData
+            });
+
+            // Nếu cập nhật thành COMPLETED + IMPORTED, cần cập nhật inventory
+            if (status === 'COMPLETED' && importStatus === 'IMPORTED') {
+                for (const poId of purchaseOrderIds) {
+                    const purchaseOrder = await tx.purchaseOrder.findUnique({
+                        where: { purchaseOrderId: BigInt(poId) },
+                        include: {
+                            purchaseOrderDetails: {
+                                include: {
+                                    variant: {
+                                        include: {
+                                            inventory: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    if (purchaseOrder) {
+                        // Cập nhật inventory cho từng variant
+                        for (const detail of purchaseOrder.purchaseOrderDetails) {
+                            const currentInventory = detail.variant.inventory;
+
+                            if (currentInventory) {
+                                await tx.inventory.update({
+                                    where: { inventoryId: currentInventory.inventoryId },
+                                    data: {
+                                        currentStock: currentInventory.currentStock + detail.quantity,
+                                        updatedAt: new Date()
+                                    }
+                                });
+                            } else {
+                                // Tạo inventory mới nếu chưa có
+                                await tx.inventory.create({
+                                    data: {
+                                        variantId: detail.variantId,
+                                        initialStock: detail.quantity,
+                                        currentStock: detail.quantity,
+                                        minStock: 0,
+                                        maxStock: 999999
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Lấy thông tin chi tiết các PO đã update
+            const finalPOs = await tx.purchaseOrder.findMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                include: {
+                    supplier: {
+                        select: {
+                            supplierId: true,
+                            name: true,
+                            supplierCode: true
+                        }
+                    },
+                    _count: {
+                        select: {
+                            purchaseOrderDetails: true
+                        }
+                    }
+                }
+            });
+
+            return {
+                updatedCount: updatedPOs.count,
+                purchaseOrders: finalPOs
+            };
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        // Serialize BigInt
+        const serialized = JSON.parse(JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        ));
+
+        return {
+            success: true,
+            data: serialized,
+            message: `Đã cập nhật thành công ${serialized.updatedCount} Purchase Orders`
+        };
+
+    } catch (error) {
+        console.error('Error updating multiple purchase orders:', error);
+        return {
+            success: false,
+            message: `Failed to update purchase orders: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+    }
+}
+
+export async function importMultiplePurchaseOrders(purchaseOrderIds: string[]) {
+    try {
+        if (!purchaseOrderIds || purchaseOrderIds.length === 0) {
+            throw new Error('Danh sách Purchase Order ID không được rỗng');
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Kiểm tra tất cả Purchase Orders có thể import không
+            const purchaseOrders = await tx.purchaseOrder.findMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                include: {
+                    supplier: true,
+                    purchaseOrderDetails: {
+                        include: {
+                            variant: {
+                                include: {
+                                    product: true,
+                                    inventory: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (purchaseOrders.length !== purchaseOrderIds.length) {
+                const foundIds = purchaseOrders.map(po => po.purchaseOrderId.toString());
+                const missingIds = purchaseOrderIds.filter(id => !foundIds.includes(id));
+                throw new Error(`Không tìm thấy Purchase Orders với ID: ${missingIds.join(', ')}`);
+            }
+
+            // Kiểm tra điều kiện import
+            const invalidPOs = purchaseOrders.filter(po =>
+                po.importStatus === 'IMPORTED' || po.status === 'CANCELLED'
+            );
+
+            if (invalidPOs.length > 0) {
+                const invalidCodes = invalidPOs.map(po => po.purchaseOrderCode).join(', ');
+                throw new Error(`Không thể import các Purchase Orders sau: ${invalidCodes} (đã import hoặc đã hủy)`);
+            }
+
+            // 1. Cập nhật tất cả Purchase Orders cùng lúc
+            await tx.purchaseOrder.updateMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrders.map(po => po.purchaseOrderId)
+                    }
+                },
+                data: {
+                    status: 'COMPLETED',
+                    importStatus: 'IMPORTED',
+                    importDate: new Date()
+                }
+            });
+
+            let totalImportedItems = 0;
+            const inventoryUpdates = [];
+
+            // 2. Xử lý inventory updates - batch theo variant
+            const variantUpdates = new Map();
+
+            // Tính toán tổng số lượng cần cập nhật cho mỗi variant
+            for (const po of purchaseOrders) {
+                for (const detail of po.purchaseOrderDetails) {
+                    const variantId = detail.variantId.toString();
+                    if (variantUpdates.has(variantId)) {
+                        variantUpdates.set(variantId, {
+                            ...variantUpdates.get(variantId),
+                            quantity: variantUpdates.get(variantId).quantity + detail.quantity
+                        });
+                    } else {
+                        variantUpdates.set(variantId, {
+                            variantId: detail.variantId,
+                            quantity: detail.quantity,
+                            variant: detail.variant
+                        });
+                    }
+                    totalImportedItems++;
+                }
+            }
+
+            // 3. Cập nhật inventory cho từng variant
+            for (const [variantId, updateData] of variantUpdates) {
+                const currentInventory = updateData.variant.inventory;
+
+                if (currentInventory) {
+                    const newQuantity = currentInventory.currentStock + updateData.quantity;
+
+                    await tx.inventory.update({
+                        where: { inventoryId: currentInventory.inventoryId },
+                        data: {
+                            currentStock: newQuantity,
+                            updatedAt: new Date()
+                        }
+                    });
+
+                    inventoryUpdates.push({
+                        variantId: variantId,
+                        productName: updateData.variant.product.name,
+                        oldQuantity: currentInventory.currentStock,
+                        newQuantity: newQuantity,
+                        importedQuantity: updateData.quantity
+                    });
+                } else {
+                    // Tạo inventory mới nếu chưa có
+                    await tx.inventory.create({
+                        data: {
+                            variantId: updateData.variantId,
+                            initialStock: updateData.quantity,
+                            currentStock: updateData.quantity,
+                            minStock: 0,
+                            maxStock: 999999
+                        }
+                    });
+
+                    inventoryUpdates.push({
+                        variantId: variantId,
+                        productName: updateData.variant.product.name,
+                        oldQuantity: 0,
+                        newQuantity: updateData.quantity,
+                        importedQuantity: updateData.quantity
+                    });
+                }
+            }
+
+            return {
+                importedPOsCount: purchaseOrders.length,
+                totalImportedItems,
+                inventoryUpdates,
+                purchaseOrderCodes: purchaseOrders.map(po => po.purchaseOrderCode)
+            };
+        }, {
+            timeout: 30000, // 30 seconds timeout
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        return {
+            success: true,
+            data: result,
+            message: `Đã nhập hàng thành công ${result.importedPOsCount} Purchase Orders với tổng cộng ${result.totalImportedItems} sản phẩm`
+        };
+
+    } catch (error) {
+        console.error('Error importing multiple purchase orders:', error);
+        return {
+            success: false,
+            message: `Failed to import purchase orders: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+    }
+}
+
+export async function cancelMultiplePurchaseOrders(
+    purchaseOrderIds: string[],
+    cancelReason?: string
+) {
+    try {
+        if (!purchaseOrderIds || purchaseOrderIds.length === 0) {
+            throw new Error('Danh sách Purchase Order ID không được rỗng');
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Kiểm tra tất cả Purchase Orders có thể hủy không
+            const purchaseOrders = await tx.purchaseOrder.findMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                select: {
+                    purchaseOrderId: true,
+                    purchaseOrderCode: true,
+                    status: true,
+                    importStatus: true
+                }
+            });
+
+            if (purchaseOrders.length !== purchaseOrderIds.length) {
+                const foundIds = purchaseOrders.map(po => po.purchaseOrderId.toString());
+                const missingIds = purchaseOrderIds.filter(id => !foundIds.includes(id));
+                throw new Error(`Không tìm thấy Purchase Orders với ID: ${missingIds.join(', ')}`);
+            }
+
+            // Kiểm tra điều kiện hủy
+            const invalidPOs = purchaseOrders.filter(po =>
+                po.status === 'CANCELLED' ||
+                po.status === 'COMPLETED' ||
+                po.importStatus === 'IMPORTED'
+            );
+
+            if (invalidPOs.length > 0) {
+                const invalidCodes = invalidPOs.map(po => po.purchaseOrderCode).join(', ');
+                throw new Error(`Không thể hủy các Purchase Orders sau: ${invalidCodes} (đã hủy, đã hoàn thành hoặc đã nhập hàng)`);
+            }
+
+            // Cập nhật trạng thái thành CANCELLED
+            const updatedPOs = await tx.purchaseOrder.updateMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                data: {
+                    status: 'CANCELLED',
+                    importStatus: 'PENDING', // Reset import status về PENDING
+                    ...(cancelReason && { note: cancelReason })
+                }
+            });
+
+            return {
+                cancelledCount: updatedPOs.count,
+                cancelledPOs: purchaseOrders.map(po => po.purchaseOrderCode)
+            };
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        return {
+            success: true,
+            data: result,
+            message: `Đã hủy thành công ${result.cancelledCount} Purchase Orders`
+        };
+
+    } catch (error) {
+        console.error('Error cancelling multiple purchase orders:', error);
+        return {
+            success: false,
+            message: `Failed to cancel purchase orders: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+    }
+}
+
+export async function deleteMultiplePurchaseOrders(purchaseOrderIds: string[]) {
+    try {
+        if (!purchaseOrderIds || purchaseOrderIds.length === 0) {
+            throw new Error('Danh sách Purchase Order ID không được rỗng');
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Kiểm tra tất cả Purchase Orders có thể xóa không
+            const purchaseOrders = await tx.purchaseOrder.findMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                },
+                select: {
+                    purchaseOrderId: true,
+                    purchaseOrderCode: true,
+                    status: true,
+                    importStatus: true
+                }
+            });
+
+            if (purchaseOrders.length !== purchaseOrderIds.length) {
+                const foundIds = purchaseOrders.map(po => po.purchaseOrderId.toString());
+                const missingIds = purchaseOrderIds.filter(id => !foundIds.includes(id));
+                throw new Error(`Không tìm thấy Purchase Orders với ID: ${missingIds.join(', ')}`);
+            }
+
+            // Kiểm tra điều kiện xóa - chỉ có thể xóa PO có status PENDING hoặc CANCELLED và chưa nhập hàng
+            const invalidPOs = purchaseOrders.filter(po =>
+                (po.status !== 'PENDING' && po.status !== 'CANCELLED') ||
+                po.importStatus === 'IMPORTED'
+            );
+
+            if (invalidPOs.length > 0) {
+                const invalidCodes = invalidPOs.map(po => po.purchaseOrderCode).join(', ');
+                throw new Error(`Không thể xóa các Purchase Orders sau: ${invalidCodes} (chỉ có thể xóa PO đang chờ xử lý hoặc đã hủy và chưa nhập hàng)`);
+            }
+
+            // Xóa Purchase Order Details trước (do foreign key constraint)
+            await tx.purchaseOrderDetail.deleteMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                }
+            });
+
+            // Xóa Purchase Orders
+            const deletedPOs = await tx.purchaseOrder.deleteMany({
+                where: {
+                    purchaseOrderId: {
+                        in: purchaseOrderIds.map(id => BigInt(id))
+                    }
+                }
+            });
+
+            return {
+                deletedCount: deletedPOs.count,
+                deletedPOs: purchaseOrders.map(po => po.purchaseOrderCode)
+            };
+        });
+
+        // Invalidate cache
+        try {
+            await redis.flushAll();
+        } catch (cacheError) {
+            console.error('Error invalidating cache:', cacheError);
+        }
+
+        return {
+            success: true,
+            data: result,
+            message: `Đã xóa thành công ${result.deletedCount} Purchase Orders`
+        };
+
+    } catch (error) {
+        console.error('Error deleting multiple purchase orders:', error);
+        return {
+            success: false,
+            message: `Failed to delete purchase orders: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+    }
+}
