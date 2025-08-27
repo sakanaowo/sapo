@@ -91,6 +91,7 @@ export default function BulkImportDropzone({
         maxFiles: 1
     })
 
+
     const parseExcelFile = useCallback((file: File): Promise<ParsedProduct[]> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader()
@@ -100,7 +101,13 @@ export default function BulkImportDropzone({
                     const workbook = XLSX.read(data, { type: 'array' })
                     const firstSheetName = workbook.SheetNames[0]
                     const worksheet = workbook.Sheets[firstSheetName]
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+                    // Convert to JSON with proper empty cell handling
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                        header: 1,
+                        defval: '', // Default value for empty cells
+                        blankrows: false // Skip completely blank rows
+                    })
 
                     if (jsonData.length < 2) {
                         reject(new Error('File không có dữ liệu hoặc chỉ có header'))
@@ -111,57 +118,90 @@ export default function BulkImportDropzone({
                     const rows = jsonData.slice(1) as unknown[][]
                     const products: ParsedProduct[] = []
 
-                    rows.forEach((row) => {
-                        if (row.length === 0 || !row[0]) return // Skip empty rows
+                    let lastProductName = '' // Track the last product name for grouping
 
-                        // Helper function to safely get string value
-                        const getString = (value: unknown): string => {
-                            return value != null ? String(value) : ''
-                        }
+                    rows.forEach((row, rowIndex) => {
+                        // Skip completely empty rows
+                        if (!row || row.length === 0 || row.every(cell => !cell)) return
 
-                        // Helper function to safely get number value
-                        const getNumber = (value: unknown): number => {
-                            const str = getString(value)
-                            const parsed = parseFloat(str)
-                            return isNaN(parsed) ? 0 : parsed
-                        }
+                        // Ensure row has enough columns and convert to strings
+                        // Pad with empty strings if row is shorter than expected
+                        const paddedRow = Array(25).fill('').map((_, index) =>
+                            index < row.length && row[index] != null ? String(row[index]).trim() : ''
+                        )
 
                         const product: ParsedProduct = {
-                            name: getString(row[0]), // Tên sản phẩm
-                            productType: getString(row[1]) || 'Sản phẩm thường', // Hình thức quản lý sản phẩm
-                            description: getString(row[2]), // Mô tả sản phẩm
-                            brand: getString(row[3]), // Nhãn hiệu
-                            tags: row[4] ? getString(row[4]).split(',').map((tag: string) => tag.trim()) : [], // Tags
-                            variantName: getString(row[5]), // Tên phiên bản sản phẩm
-                            sku: getString(row[6]), // Mã SKU
-                            barcode: getString(row[7]), // Barcode
-                            weight: getNumber(row[8]), // Khối lượng
-                            weightUnit: getString(row[9]) || 'g', // Đơn vị khối lượng
-                            unit: getString(row[10]), // Đơn vị
-                            conversionRate: getNumber(row[11]) || 1, // Quy đổi đơn vị
-                            imageUrl: getString(row[12]), // Ảnh đại diện
-                            retailPrice: getNumber(row[13]), // Giá bán lẻ
-                            importPrice: getNumber(row[14]), // Giá nhập
-                            wholesalePrice: getNumber(row[15]), // Giá bán buôn
-                            taxApplied: getString(row[16]) === 'Có' || getString(row[16]) === 'Yes', // Áp dụng thuế
-                            inputTax: getNumber(row[17]), // Thuế đầu vào (%)
-                            outputTax: getNumber(row[18]), // Thuế đầu ra (%)
-                            initialStock: getNumber(row[19]), // Tồn kho ban đầu
-                            minStock: getNumber(row[20]), // Tồn tối thiểu
-                            maxStock: getNumber(row[21]), // Tồn tối đa
-                            warehouseLocation: getString(row[22]), // Điểm lưu kho
-                            expiryWarningDays: getNumber(row[23]), // Số ngày cảnh báo hết hạn
-                            warrantyApplied: getString(row[24]) === 'Có' || getString(row[24]) === 'Yes', // Áp dụng bảo hành
+                            name: paddedRow[0] || '', // Tên sản phẩm
+                            productType: paddedRow[1] || 'Sản phẩm thường', // Hình thức quản lý sản phẩm
+                            description: paddedRow[2] || '', // Mô tả sản phẩm
+                            brand: paddedRow[3] || '', // Nhãn hiệu
+                            tags: paddedRow[4] ? paddedRow[4].split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Tags (separated by comma)
+                            variantName: paddedRow[5] || '', // Tên phiên bản sản phẩm
+                            sku: paddedRow[6] || '', // Mã SKU
+                            barcode: paddedRow[7] || '', // Barcode
+                            weight: parseFloat(paddedRow[8]) || 0, // Khối lượng
+                            weightUnit: paddedRow[9] || 'g', // Đơn vị khối lượng
+                            unit: paddedRow[10] || '', // Đơn vị
+                            conversionRate: parseFloat(paddedRow[11]) || 1, // Quy đổi đơn vị
+                            imageUrl: paddedRow[12] || '', // Ảnh đại diện
+                            retailPrice: parseFloat(paddedRow[13]) || 0, // Giá bán lẻ
+                            importPrice: parseFloat(paddedRow[14]) || 0, // Giá nhập
+                            wholesalePrice: parseFloat(paddedRow[15]) || 0, // Giá bán buôn
+                            taxApplied: paddedRow[16] === 'Có' || paddedRow[16] === 'Yes', // Áp dụng thuế
+                            inputTax: parseFloat(paddedRow[17]) || 0, // Thuế đầu vào (%)
+                            outputTax: parseFloat(paddedRow[18]) || 0, // Thuế đầu ra (%)
+                            initialStock: parseFloat(paddedRow[19]) || 0, // Tồn kho ban đầu
+                            minStock: parseFloat(paddedRow[20]) || 0, // Tồn tối thiểu
+                            maxStock: parseFloat(paddedRow[21]) || 0, // Tồn tối đa
+                            warehouseLocation: paddedRow[22] || '', // Điểm lưu kho
+                            expiryWarningDays: parseFloat(paddedRow[23]) || 0, // Số ngày cảnh báo hết hạn
+                            warrantyApplied: paddedRow[24] === 'Có' || paddedRow[24] === 'Yes', // Áp dụng bảo hành
                         }
 
-                        // Use variant name as product name if product name is empty (grouped products)
-                        if (!product.name && product.variantName) {
-                            product.name = product.variantName
+                        // Debug logging to see what's happening
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log(`Excel Row ${rowIndex + 2}:`, {
+                                originalRow: row.slice(0, 6),
+                                paddedRow: paddedRow.slice(0, 6),
+                                productName: `"${product.name}"`,
+                                variantName: `"${product.variantName}"`,
+                                sku: product.sku,
+                                lastProductName: `"${lastProductName}"`
+                            })
                         }
 
-                        // Set product group for variants (use the main product name if available)
-                        if (product.name) {
+                        // Logic for grouping variants:
+                        // If product name is empty, this is a variant of the previous product
+                        if (!product.name.trim() && product.variantName?.trim() && lastProductName) {
+                            product.name = lastProductName // Use the previous product name
+                            product.productGroup = lastProductName
+
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log(`  → Detected as variant of "${lastProductName}"`)
+                            }
+                        } else if (product.name.trim()) {
+                            // This is a main product, update the last product name
+                            lastProductName = product.name
                             product.productGroup = product.name
+
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log(`  → Detected as main product, updated lastProductName to "${lastProductName}"`)
+                            }
+                        } else if (product.variantName?.trim()) {
+                            // If no product name but has variant name, use variant name as product name
+                            product.name = product.variantName
+                            product.productGroup = product.variantName
+                            lastProductName = product.variantName
+
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log(`  → Using variant name as product name: "${product.variantName}"`)
+                            }
+                        }
+
+                        // Skip products without both name and variant name
+                        if (!product.name.trim() && !product.variantName?.trim()) {
+                            console.warn(`Bỏ qua dòng ${rowIndex + 2}: Không có tên sản phẩm và tên variant`)
+                            return
                         }
 
                         products.push(product)
@@ -464,7 +504,8 @@ export default function BulkImportDropzone({
 
             // Debug: Log parsing results
             if (process.env.NODE_ENV === 'development') {
-                console.log('=== CSV PARSING RESULTS ===')
+                const fileType = file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ? 'XLSX' : 'CSV'
+                console.log(`=== ${fileType} PARSING RESULTS ===`)
                 console.log('Total products parsed:', products.length)
                 console.log('Validation errors:', errors.length)
 
@@ -489,7 +530,7 @@ export default function BulkImportDropzone({
                         })
                     }
                 })
-                console.log('=== END PARSING RESULTS ===')
+                console.log(`=== END ${fileType} PARSING RESULTS ===`)
             }
 
             if (errors.length === 0) {
@@ -687,7 +728,7 @@ export default function BulkImportDropzone({
                 {/* Progress */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span>Xác thực dữ liệu</span>
+                        <span>Tải lên dữ liệu</span>
                         <span>{progress}%</span>
                     </div>
                     <Progress value={progress} className="w-full h-2" />
@@ -723,7 +764,7 @@ export default function BulkImportDropzone({
                         <CheckCircle className="h-4 w-4 text-green-600" />
                         <AlertDescription>
                             <p className="font-semibold text-green-800 dark:text-green-200">
-                                Xác thực thành công! Sẵn sàng nhập {parsedData.length} sản phẩm.
+                                Tải dữ liệu thành công!
                             </p>
                         </AlertDescription>
                     </Alert>
@@ -758,13 +799,13 @@ export default function BulkImportDropzone({
                                     <div className="text-lg font-bold text-green-600">
                                         {parsedData.filter(p => p.sku).length}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">Có mã SKU</div>
+                                    <div className="text-xs text-muted-foreground">Mã SKU</div>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-lg font-bold text-blue-600">
                                         {parsedData.filter(p => p.initialStock > 0).length}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">Có tồn kho</div>
+                                    <div className="text-xs text-muted-foreground">Tồn kho</div>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-lg font-bold text-orange-600">
@@ -776,43 +817,9 @@ export default function BulkImportDropzone({
                                     <div className="text-lg font-bold text-purple-600">
                                         {parsedData.filter(p => (p.conversionRate || 1) > 1).length}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">Có quy đổi</div>
+                                    <div className="text-xs text-muted-foreground">Quy đổi</div>
                                 </div>
                             </div>
-
-                            {/* Conversion Rules Preview */}
-                            {(() => {
-                                const productsWithConversion = parsedData.filter(p => (p.conversionRate || 1) > 1)
-                                if (productsWithConversion.length > 0) {
-                                    return (
-                                        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                                            <h4 className="font-medium text-purple-900 mb-2 flex items-center gap-2">
-                                                <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                                                Quy đổi đơn vị được phát hiện
-                                            </h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                                                {productsWithConversion.slice(0, 4).map((product, index) => (
-                                                    <div key={index} className="flex items-center gap-2 text-purple-700">
-                                                        <span className="font-mono text-xs bg-purple-100 px-2 py-1 rounded">
-                                                            {product.sku}
-                                                        </span>
-                                                        <span>→</span>
-                                                        <span className="text-xs">
-                                                            {product.conversionRate}x {product.unit}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {productsWithConversion.length > 4 && (
-                                                    <div className="text-xs text-purple-600 col-span-full">
-                                                        +{productsWithConversion.length - 4} sản phẩm khác có quy đổi
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                }
-                                return null
-                            })()}
 
                             {/* Data Table */}
                             <div className="w-full border rounded-lg overflow-hidden">
@@ -978,9 +985,6 @@ export default function BulkImportDropzone({
                                                                                     <span className="inline-flex items-center px-2 py-1 rounded-md bg-purple-50 text-purple-700 text-xs font-medium">
                                                                                         {variant.conversionRate}x
                                                                                     </span>
-                                                                                    <div className="text-xs text-muted-foreground">
-                                                                                        vs đơn vị cơ sở
-                                                                                    </div>
                                                                                 </div>
                                                                             ) : (
                                                                                 <span className="text-muted-foreground">1x</span>
@@ -1010,7 +1014,7 @@ export default function BulkImportDropzone({
                                                                 ))}
 
                                                                 {/* Conversion Summary Row */}
-                                                                {hasVariants && isExpanded && product.variants && product.variants.length > 0 && (
+                                                                {/* {hasVariants && isExpanded && product.variants && product.variants.length > 0 && (
                                                                     <TableRow className="bg-purple-50/50">
                                                                         <TableCell colSpan={2}></TableCell>
                                                                         <TableCell colSpan={7} className="text-center py-2">
@@ -1039,7 +1043,7 @@ export default function BulkImportDropzone({
                                                                             </div>
                                                                         </TableCell>
                                                                     </TableRow>
-                                                                )}
+                                                                )} */}
                                                             </React.Fragment>
                                                         )
                                                     })
