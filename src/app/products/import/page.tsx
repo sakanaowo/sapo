@@ -19,14 +19,14 @@ export default function ProductImportPage() {
     const [isProcessing, setIsProcessing] = useState(false)
     const [toggleInstruction, setToggleInstruction] = useState(false)
 
-    const handleDownloadTemplate = () => {
+    const handleDownloadTemplate = (type: 'excel' | 'csv') => {
         const link = document.createElement('a')
-        link.href = '/templates/import-goods-template.xlsx'
-        link.download = 'import-goods-template.xlsx'
+        link.href = `/templates/import-goods-template.${type === 'excel' ? 'xlsx' : 'csv'}`
+        link.download = `import-goods-template.${type === 'excel' ? 'xlsx' : 'csv'}`
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        toast.success('Đã tải xuống template thành công!')
+        toast.success('Đã tải xuống template')
     }
 
     const handleImportSuccess = (data: { productCount: number; purchaseOrder: PurchaseOrder }) => {
@@ -59,12 +59,14 @@ export default function ProductImportPage() {
 
             <div className="grid gap-6">
                 {/* Instructions */}
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-                    <CardHeader className="pb-4 cursor-pointer" onClick={() => setToggleInstruction(!toggleInstruction)}>
+                <Card
+                    className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800 cursor-pointer transition-all duration-200 hover:shadow-md"
+                    onClick={() => setToggleInstruction(!toggleInstruction)}
+                >
+                    <CardHeader className={toggleInstruction ? 'pb-4' : 'pb-6'}>
                         <CardTitle className="text-blue-800 dark:text-blue-200 flex items-center justify-between">
                             Hướng dẫn sử dụng
-                            <Button variant="ghost" size="sm" className="p-0 h-auto">
-                                {/* TODO: fix UI: instruction toggle button */}
+                            <div className="transition-transform duration-200">
                                 {toggleInstruction ? (
                                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -74,7 +76,7 @@ export default function ProductImportPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
                                 )}
-                            </Button>
+                            </div>
                         </CardTitle>
                     </CardHeader>
                     {toggleInstruction && (
@@ -90,7 +92,7 @@ export default function ProductImportPage() {
                                     <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2 ml-10">
                                         <li className="flex items-start gap-2">
                                             <span className="text-blue-500 mt-1">•</span>
-                                            <span>Tải về template mẫu và điền thông tin sản phẩm</span>
+                                            <span>Tải về template và điền thông tin sản phẩm</span>
                                         </li>
                                         <li className="flex items-start gap-2">
                                             <span className="text-blue-500 mt-1">•</span>
@@ -105,14 +107,31 @@ export default function ProductImportPage() {
                                             <span>Giá trị số phải đúng định dạng</span>
                                         </li>
                                     </ul>
-                                    <Button
-                                        onClick={handleDownloadTemplate}
-                                        variant="outline"
-                                        className="mt-3 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
-                                    >
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Tải template Excel
-                                    </Button>
+
+                                    <div className="flex flex-col md:flex-row md:space-x-4">
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleDownloadTemplate('excel')
+                                            }}
+                                            variant="outline"
+                                            className="mt-3 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
+                                        >
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Tải template Excel
+                                        </Button>
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleDownloadTemplate('csv')
+                                            }}
+                                            variant="outline"
+                                            className="mt-3 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
+                                        >
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Tải template CSV
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-3">

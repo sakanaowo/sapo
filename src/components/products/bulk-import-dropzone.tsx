@@ -15,56 +15,15 @@ import { AlertCircle, CheckCircle, FileSpreadsheet, Loader2, ChevronDown, Chevro
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 import { SupplierSelect } from '@/components/suppliers/SupplierSelect'
-
-interface PurchaseOrder {
-    purchaseOrderCode: string
-    totalAmount: number
-    // Add other purchase order fields as needed
-}
-
-interface BulkImportDropzoneProps {
-    onSuccess: (data: { productCount: number; purchaseOrder: PurchaseOrder }) => void
-    onError: (error: string) => void
-    isProcessing: boolean
-    setIsProcessing: (processing: boolean) => void
-}
-
-interface ParsedProduct {
-    name: string
-    productType?: string // Hình thức quản lý sản phẩm
-    description?: string // Mô tả sản phẩm
-    brand?: string // Nhãn hiệu
-    tags?: string[] // Tags
-    variantName?: string // Tên phiên bản sản phẩm
-    sku: string // Mã SKU
-    barcode?: string // Barcode
-    weight?: number // Khối lượng
-    weightUnit?: string // Đơn vị khối lượng
-    unit: string // Đơn vị
-    conversionRate?: number // Quy đổi đơn vị
-    imageUrl?: string // Ảnh đại diện
-    retailPrice: number // Giá bán lẻ
-    importPrice: number // Giá nhập
-    wholesalePrice?: number // Giá bán buôn
-    taxApplied?: boolean // Áp dụng thuế
-    inputTax?: number // Thuế đầu vào (%)
-    outputTax?: number // Thuế đầu ra (%)
-    initialStock: number // Tồn kho ban đầu
-    minStock?: number // Tồn tối thiểu
-    maxStock?: number // Tồn tối đa
-    warehouseLocation?: string // Điểm lưu kho
-    expiryWarningDays?: number // Số ngày cảnh báo hết hạn
-    warrantyApplied?: boolean // Áp dụng bảo hành
-    // For grouping variants
-    productGroup?: string // Used to group variants together
-    variants?: ParsedProduct[] // Child variants for this product
-}
-
-interface ValidationError {
-    row: number
-    field: string
-    message: string
-}
+import {
+    type BulkImportDropzoneProps,
+    type ParsedProduct,
+    type ValidationError,
+    type TransformedProduct,
+    type ImportData,
+    type ImportStep,
+    BULK_IMPORT_CONSTANTS
+} from '@/store/bulk-import'
 // TODO: create detail dialog
 export default function BulkImportDropzone({
     onSuccess,
@@ -74,7 +33,7 @@ export default function BulkImportDropzone({
 }: BulkImportDropzoneProps) {
     const [parsedData, setParsedData] = useState<ParsedProduct[]>([])
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
-    const [step, setStep] = useState<'upload' | 'preview' | 'processing'>('upload')
+    const [step, setStep] = useState<ImportStep>('upload')
     const [progress, setProgress] = useState(0)
     const [selectedSupplier, setSelectedSupplier] = useState<string>('')
     const [importNote, setImportNote] = useState<string>('')
@@ -82,13 +41,9 @@ export default function BulkImportDropzone({
 
     const uploadProps = useSupabaseUpload({
         bucketName: 'temp-imports',
-        allowedMimeTypes: [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-            'application/vnd.ms-excel', // .xls
-            'text/csv' // .csv
-        ],
-        maxFileSize: 10 * 1024 * 1024, // 10MB
-        maxFiles: 1
+        allowedMimeTypes: [...BULK_IMPORT_CONSTANTS.ALLOWED_MIME_TYPES],
+        maxFileSize: BULK_IMPORT_CONSTANTS.MAX_FILE_SIZE,
+        maxFiles: BULK_IMPORT_CONSTANTS.MAX_FILES
     })
 
 
@@ -110,7 +65,7 @@ export default function BulkImportDropzone({
                     })
 
                     if (jsonData.length < 2) {
-                        reject(new Error('File không có dữ liệu hoặc chỉ có header'))
+                        reject(new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.NO_HEADER))
                         return
                     }
 
@@ -126,36 +81,36 @@ export default function BulkImportDropzone({
 
                         // Ensure row has enough columns and convert to strings
                         // Pad with empty strings if row is shorter than expected
-                        const paddedRow = Array(25).fill('').map((_, index) =>
+                        const paddedRow = Array(BULK_IMPORT_CONSTANTS.DEFAULT_COLUMNS_COUNT).fill('').map((_, index) =>
                             index < row.length && row[index] != null ? String(row[index]).trim() : ''
                         )
 
                         const product: ParsedProduct = {
-                            name: paddedRow[0] || '', // Tên sản phẩm
-                            productType: paddedRow[1] || 'Sản phẩm thường', // Hình thức quản lý sản phẩm
-                            description: paddedRow[2] || '', // Mô tả sản phẩm
-                            brand: paddedRow[3] || '', // Nhãn hiệu
-                            tags: paddedRow[4] ? paddedRow[4].split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Tags (separated by comma)
-                            variantName: paddedRow[5] || '', // Tên phiên bản sản phẩm
-                            sku: paddedRow[6] || '', // Mã SKU
-                            barcode: paddedRow[7] || '', // Barcode
-                            weight: parseFloat(paddedRow[8]) || 0, // Khối lượng
-                            weightUnit: paddedRow[9] || 'g', // Đơn vị khối lượng
-                            unit: paddedRow[10] || '', // Đơn vị
-                            conversionRate: parseFloat(paddedRow[11]) || 1, // Quy đổi đơn vị
-                            imageUrl: paddedRow[12] || '', // Ảnh đại diện
-                            retailPrice: parseFloat(paddedRow[13]) || 0, // Giá bán lẻ
-                            importPrice: parseFloat(paddedRow[14]) || 0, // Giá nhập
-                            wholesalePrice: parseFloat(paddedRow[15]) || 0, // Giá bán buôn
-                            taxApplied: paddedRow[16] === 'Có' || paddedRow[16] === 'Yes', // Áp dụng thuế
-                            inputTax: parseFloat(paddedRow[17]) || 0, // Thuế đầu vào (%)
-                            outputTax: parseFloat(paddedRow[18]) || 0, // Thuế đầu ra (%)
-                            initialStock: parseFloat(paddedRow[19]) || 0, // Tồn kho ban đầu
-                            minStock: parseFloat(paddedRow[20]) || 0, // Tồn tối thiểu
-                            maxStock: parseFloat(paddedRow[21]) || 0, // Tồn tối đa
-                            warehouseLocation: paddedRow[22] || '', // Điểm lưu kho
-                            expiryWarningDays: parseFloat(paddedRow[23]) || 0, // Số ngày cảnh báo hết hạn
-                            warrantyApplied: paddedRow[24] === 'Có' || paddedRow[24] === 'Yes', // Áp dụng bảo hành
+                            name: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.NAME] || '', // Tên sản phẩm
+                            productType: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.PRODUCT_TYPE] || BULK_IMPORT_CONSTANTS.DEFAULT_PRODUCT_TYPE, // Hình thức quản lý sản phẩm
+                            description: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.DESCRIPTION] || '', // Mô tả sản phẩm
+                            brand: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.BRAND] || '', // Nhãn hiệu
+                            tags: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAGS] ? paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAGS].split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Tags (separated by comma)
+                            variantName: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.VARIANT_NAME] || '', // Tên phiên bản sản phẩm
+                            sku: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.SKU] || '', // Mã SKU
+                            barcode: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.BARCODE] || '', // Barcode
+                            weight: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WEIGHT]) || 0, // Khối lượng
+                            weightUnit: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WEIGHT_UNIT] || BULK_IMPORT_CONSTANTS.DEFAULT_WEIGHT_UNIT, // Đơn vị khối lượng
+                            unit: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.UNIT] || '', // Đơn vị
+                            conversionRate: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.CONVERSION_RATE]) || BULK_IMPORT_CONSTANTS.DEFAULT_CONVERSION_RATE, // Quy đổi đơn vị
+                            imageUrl: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.IMAGE_URL] || '', // Ảnh đại diện
+                            retailPrice: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.RETAIL_PRICE]) || 0, // Giá bán lẻ
+                            importPrice: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.IMPORT_PRICE]) || 0, // Giá nhập
+                            wholesalePrice: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WHOLESALE_PRICE]) || 0, // Giá bán buôn
+                            taxApplied: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAX_APPLIED] === 'Có' || paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAX_APPLIED] === 'Yes', // Áp dụng thuế
+                            inputTax: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.INPUT_TAX]) || 0, // Thuế đầu vào (%)
+                            outputTax: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.OUTPUT_TAX]) || 0, // Thuế đầu ra (%)
+                            initialStock: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.INITIAL_STOCK]) || 0, // Tồn kho ban đầu
+                            minStock: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.MIN_STOCK]) || 0, // Tồn tối thiểu
+                            maxStock: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.MAX_STOCK]) || 0, // Tồn tối đa
+                            warehouseLocation: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WAREHOUSE_LOCATION] || '', // Điểm lưu kho
+                            expiryWarningDays: parseFloat(paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.EXPIRY_WARNING_DAYS]) || 0, // Số ngày cảnh báo hết hạn
+                            warrantyApplied: paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WARRANTY_APPLIED] === 'Có' || paddedRow[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WARRANTY_APPLIED] === 'Yes', // Áp dụng bảo hành
                         }
 
 
@@ -191,7 +146,7 @@ export default function BulkImportDropzone({
                     reject(error)
                 }
             }
-            reader.onerror = () => reject(new Error('Không thể đọc file'))
+            reader.onerror = () => reject(new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.FILE_READ_ERROR))
             reader.readAsArrayBuffer(file)
         })
     }, [])
@@ -205,7 +160,7 @@ export default function BulkImportDropzone({
                     const lines = text.split('\n')
 
                     if (lines.length < 2) {
-                        reject(new Error('File CSV không có dữ liệu hoặc chỉ có header'))
+                        reject(new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.CSV_NO_HEADER))
                         return
                     }
 
@@ -237,31 +192,31 @@ export default function BulkImportDropzone({
                         row.push(current.trim()) // Add the last field
 
                         const product: ParsedProduct = {
-                            name: row[0] || '', // Tên sản phẩm
-                            productType: row[1] || 'Sản phẩm thường', // Hình thức quản lý sản phẩm
-                            description: row[2] || '', // Mô tả sản phẩm
-                            brand: row[3] || '', // Nhãn hiệu
-                            tags: row[4] ? row[4].split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Tags (separated by comma)
-                            variantName: row[5] || '', // Tên phiên bản sản phẩm
-                            sku: row[6] || '', // Mã SKU
-                            barcode: row[7] || '', // Barcode
-                            weight: parseFloat(row[8]) || 0, // Khối lượng
-                            weightUnit: row[9] || 'g', // Đơn vị khối lượng
-                            unit: row[10] || '', // Đơn vị
-                            conversionRate: parseFloat(row[11]) || 1, // Quy đổi đơn vị
-                            imageUrl: row[12] || '', // Ảnh đại diện
-                            retailPrice: parseFloat(row[13]) || 0, // Giá bán lẻ
-                            importPrice: parseFloat(row[14]) || 0, // Giá nhập
-                            wholesalePrice: parseFloat(row[15]) || 0, // Giá bán buôn
-                            taxApplied: row[16] === 'Có' || row[16] === 'Yes', // Áp dụng thuế
-                            inputTax: parseFloat(row[17]) || 0, // Thuế đầu vào (%)
-                            outputTax: parseFloat(row[18]) || 0, // Thuế đầu ra (%)
-                            initialStock: parseFloat(row[19]) || 0, // Tồn kho ban đầu
-                            minStock: parseFloat(row[20]) || 0, // Tồn tối thiểu
-                            maxStock: parseFloat(row[21]) || 0, // Tồn tối đa
-                            warehouseLocation: row[22] || '', // Điểm lưu kho
-                            expiryWarningDays: parseFloat(row[23]) || 0, // Số ngày cảnh báo hết hạn
-                            warrantyApplied: row[24] === 'Có' || row[24] === 'Yes', // Áp dụng bảo hành
+                            name: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.NAME] || '', // Tên sản phẩm
+                            productType: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.PRODUCT_TYPE] || BULK_IMPORT_CONSTANTS.DEFAULT_PRODUCT_TYPE, // Hình thức quản lý sản phẩm
+                            description: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.DESCRIPTION] || '', // Mô tả sản phẩm
+                            brand: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.BRAND] || '', // Nhãn hiệu
+                            tags: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAGS] ? row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAGS].split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Tags (separated by comma)
+                            variantName: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.VARIANT_NAME] || '', // Tên phiên bản sản phẩm
+                            sku: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.SKU] || '', // Mã SKU
+                            barcode: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.BARCODE] || '', // Barcode
+                            weight: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WEIGHT]) || 0, // Khối lượng
+                            weightUnit: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WEIGHT_UNIT] || BULK_IMPORT_CONSTANTS.DEFAULT_WEIGHT_UNIT, // Đơn vị khối lượng
+                            unit: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.UNIT] || '', // Đơn vị
+                            conversionRate: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.CONVERSION_RATE]) || BULK_IMPORT_CONSTANTS.DEFAULT_CONVERSION_RATE, // Quy đổi đơn vị
+                            imageUrl: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.IMAGE_URL] || '', // Ảnh đại diện
+                            retailPrice: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.RETAIL_PRICE]) || 0, // Giá bán lẻ
+                            importPrice: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.IMPORT_PRICE]) || 0, // Giá nhập
+                            wholesalePrice: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WHOLESALE_PRICE]) || 0, // Giá bán buôn
+                            taxApplied: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAX_APPLIED] === 'Có' || row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.TAX_APPLIED] === 'Yes', // Áp dụng thuế
+                            inputTax: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.INPUT_TAX]) || 0, // Thuế đầu vào (%)
+                            outputTax: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.OUTPUT_TAX]) || 0, // Thuế đầu ra (%)
+                            initialStock: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.INITIAL_STOCK]) || 0, // Tồn kho ban đầu
+                            minStock: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.MIN_STOCK]) || 0, // Tồn tối thiểu
+                            maxStock: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.MAX_STOCK]) || 0, // Tồn tối đa
+                            warehouseLocation: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WAREHOUSE_LOCATION] || '', // Điểm lưu kho
+                            expiryWarningDays: parseFloat(row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.EXPIRY_WARNING_DAYS]) || 0, // Số ngày cảnh báo hết hạn
+                            warrantyApplied: row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WARRANTY_APPLIED] === 'Có' || row[BULK_IMPORT_CONSTANTS.COLUMN_INDICES.WARRANTY_APPLIED] === 'Yes', // Áp dụng bảo hành
                         }
 
                         // Logic for grouping variants:
@@ -294,7 +249,7 @@ export default function BulkImportDropzone({
                     reject(error)
                 }
             }
-            reader.onerror = () => reject(new Error('Không thể đọc file CSV'))
+            reader.onerror = () => reject(new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.CSV_READ_ERROR))
             reader.readAsText(file, 'utf-8')
         })
     }, [])
@@ -308,54 +263,54 @@ export default function BulkImportDropzone({
 
             // Required fields validation
             if (!product.name?.trim()) {
-                errors.push({ row, field: 'Tên sản phẩm', message: 'Tên sản phẩm không được để trống' })
+                errors.push({ row, field: 'Tên sản phẩm', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.PRODUCT_NAME_REQUIRED })
             }
 
             if (!product.sku?.trim()) {
-                errors.push({ row, field: 'Mã SKU', message: 'Mã SKU không được để trống' })
+                errors.push({ row, field: 'Mã SKU', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.SKU_REQUIRED })
             } else {
                 // Check for duplicate SKUs
                 if (skuSet.has(product.sku)) {
-                    errors.push({ row, field: 'Mã SKU', message: `Mã SKU '${product.sku}' bị trùng lặp` })
+                    errors.push({ row, field: 'Mã SKU', message: `${BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.SKU_DUPLICATE.replace('Mã SKU bị trùng lặp', `Mã SKU '${product.sku}' bị trùng lặp`)}` })
                 } else {
                     skuSet.add(product.sku)
                 }
             }
 
             if (!product.unit?.trim()) {
-                errors.push({ row, field: 'Đơn vị', message: 'Đơn vị không được để trống' })
+                errors.push({ row, field: 'Đơn vị', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.UNIT_REQUIRED })
             }
 
             // Price validation
             if (product.retailPrice < 0) {
-                errors.push({ row, field: 'Giá bán lẻ', message: 'Giá bán lẻ không được âm' })
+                errors.push({ row, field: 'Giá bán lẻ', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.RETAIL_PRICE_NEGATIVE })
             }
 
             if (product.importPrice < 0) {
-                errors.push({ row, field: 'Giá nhập', message: 'Giá nhập không được âm' })
+                errors.push({ row, field: 'Giá nhập', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.IMPORT_PRICE_NEGATIVE })
             }
 
             if (product.initialStock < 0) {
-                errors.push({ row, field: 'Tồn kho ban đầu', message: 'Tồn kho ban đầu không được âm' })
+                errors.push({ row, field: 'Tồn kho ban đầu', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.INITIAL_STOCK_NEGATIVE })
             }
 
             // Conversion rate validation
             if ((product.conversionRate ?? 1) <= 0) {
-                errors.push({ row, field: 'Quy đổi đơn vị', message: 'Quy đổi đơn vị phải lớn hơn 0' })
+                errors.push({ row, field: 'Quy đổi đơn vị', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.CONVERSION_RATE_INVALID })
             }
 
             // Tax validation
             if ((product.inputTax ?? 0) < 0 || (product.inputTax ?? 0) > 100) {
-                errors.push({ row, field: 'Thuế đầu vào', message: 'Thuế đầu vào phải từ 0-100%' })
+                errors.push({ row, field: 'Thuế đầu vào', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.INPUT_TAX_INVALID })
             }
 
             if ((product.outputTax ?? 0) < 0 || (product.outputTax ?? 0) > 100) {
-                errors.push({ row, field: 'Thuế đầu ra', message: 'Thuế đầu ra phải từ 0-100%' })
+                errors.push({ row, field: 'Thuế đầu ra', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.OUTPUT_TAX_INVALID })
             }
 
             // Variant name validation for grouped products
             if (product.productGroup && product.productGroup !== product.name && !product.variantName?.trim()) {
-                errors.push({ row, field: 'Tên phiên bản', message: 'Tên phiên bản sản phẩm không được để trống cho variant' })
+                errors.push({ row, field: 'Tên phiên bản', message: BULK_IMPORT_CONSTANTS.VALIDATION_MESSAGES.VARIANT_NAME_REQUIRED })
             }
         })
 
@@ -447,62 +402,62 @@ export default function BulkImportDropzone({
 
     const handleFileProcessing = useCallback(async () => {
         const file = uploadProps.files[0]
-        console.log('handleFileProcessing called with file:', file?.name)
+        // console.log('handleFileProcessing called with file:', file?.name)
         if (!file) return
 
         setStep('preview')
-        setProgress(20)
+        setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.FILE_UPLOAD)
 
         try {
             let products: ParsedProduct[]
 
             if (file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                console.log('Processing as Excel file')
+                // console.log('Processing as Excel file')
                 products = await parseExcelFile(file)
             } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-                console.log('Processing as CSV file')
+                // console.log('Processing as CSV file')
                 products = await parseCSVFile(file)
             } else {
-                throw new Error('Định dạng file không được hỗ trợ')
+                throw new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.UNSUPPORTED_FORMAT)
             }
 
-            setProgress(60)
+            setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.FILE_PARSING)
 
             if (products.length === 0) {
-                throw new Error('File không chứa dữ liệu sản phẩm hợp lệ')
+                throw new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.NO_DATA)
             }
 
-            if (products.length > 1000) {
-                throw new Error('Chỉ được phép import tối đa 1000 sản phẩm mỗi lần')
+            if (products.length > BULK_IMPORT_CONSTANTS.MAX_PRODUCTS_PER_IMPORT) {
+                throw new Error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.TOO_MANY_PRODUCTS)
             }
 
             const errors = validateProducts(products)
             setValidationErrors(errors)
             setParsedData(products)
-            setProgress(100)
+            setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.VALIDATION_COMPLETE)
 
             if (errors.length === 0) {
-                toast.success(`Đã xác thực thành công ${products.length} sản phẩm`)
+                toast.success(BULK_IMPORT_CONSTANTS.SUCCESS_MESSAGES.VALIDATION_SUCCESS.replace('{count}', products.length.toString()))
             } else {
-                toast.warning(`Tìm thấy ${errors.length} lỗi cần sửa`)
+                toast.warning(BULK_IMPORT_CONSTANTS.SUCCESS_MESSAGES.VALIDATION_WITH_ERRORS.replace('{count}', errors.length.toString()))
             }
 
         } catch (error) {
             console.error('Error processing file:', error)
-            onError(error instanceof Error ? error.message : 'Lỗi không xác định')
+            onError(error instanceof Error ? error.message : BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.UNKNOWN_ERROR)
             setStep('upload')
             setProgress(0)
         }
-    }, [uploadProps.files, parseExcelFile, parseCSVFile, validateProducts, groupProductsByVariants, onError])
+    }, [uploadProps.files, parseExcelFile, parseCSVFile, validateProducts, onError])
 
     const handleImport = useCallback(async () => {
         if (validationErrors.length > 0) {
-            toast.error('Vui lòng sửa các lỗi trước khi import')
+            toast.error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.VALIDATION_ERRORS_EXIST)
             return
         }
 
         if (!selectedSupplier) {
-            toast.error('Vui lòng chọn nhà cung cấp')
+            toast.error(BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.SUPPLIER_REQUIRED)
             return
         }
 
@@ -513,29 +468,7 @@ export default function BulkImportDropzone({
         try {
             // Group products and their variants for processing
             const groupedProducts = groupProductsByVariants(parsedData)
-            const transformedProducts: Array<{
-                name: string;
-                description?: string;
-                brand?: string;
-                productType?: string;
-                tags?: string[];
-                sku: string;
-                barcode?: string;
-                weight?: number;
-                weightUnit?: string;
-                unit: string;
-                imageUrl?: string;
-                retailPrice: number;
-                importPrice: number;
-                wholesalePrice?: number;
-                initialStock: number;
-                minStock?: number;
-                maxStock?: number;
-                warehouseLocation?: string;
-                taxApplied?: boolean;
-                inputTax?: number;
-                outputTax?: number;
-            }> = []
+            const transformedProducts: TransformedProduct[] = []
 
             // Process each grouped product and its variants
             groupedProducts.forEach(product => {
@@ -594,35 +527,35 @@ export default function BulkImportDropzone({
                 }
             })
 
-            const importData = {
+            const importData: ImportData = {
                 supplierId: selectedSupplier,
                 importDate: new Date(),
                 note: importNote || `Bulk import ${transformedProducts.length} sản phẩm từ file`,
                 products: transformedProducts
             }
 
-            setProgress(30)
+            setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.IMPORT_START)
 
             // Import bulkImportProducts action
             const { bulkImportProducts } = await import('@/actions/product.action')
 
-            setProgress(50)
+            setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.IMPORT_PROCESSING)
 
             // Call server action directly
             const result = await bulkImportProducts(importData)
 
-            setProgress(80)
+            setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.IMPORT_FINALIZING)
 
             if (!result.success) {
-                throw new Error(result.message || 'Lỗi khi import sản phẩm')
+                throw new Error(result.message || BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.IMPORT_FAILED)
             }
 
-            setProgress(100)
+            setProgress(BULK_IMPORT_CONSTANTS.PROGRESS.IMPORT_COMPLETE)
             onSuccess(result.data)
 
         } catch (error) {
             console.error('Import error:', error)
-            onError(error instanceof Error ? error.message : 'Lỗi không xác định khi import')
+            onError(error instanceof Error ? error.message : BULK_IMPORT_CONSTANTS.ERROR_MESSAGES.UNKNOWN_ERROR)
             setStep('preview')
         } finally {
             setIsProcessing(false)
@@ -642,9 +575,9 @@ export default function BulkImportDropzone({
 
     // Auto-process file when uploaded
     useEffect(() => {
-        console.log('Files changed:', uploadProps.files.length, 'Step:', step)
+        // console.log('Files changed:', uploadProps.files.length, 'Step:', step)
         if (uploadProps.files.length > 0 && step === 'upload') {
-            console.log('Processing file:', uploadProps.files[0]?.name)
+            // console.log('Processing file:', uploadProps.files[0]?.name)
             handleFileProcessing()
         }
     }, [uploadProps.files, step, handleFileProcessing])
@@ -675,10 +608,6 @@ export default function BulkImportDropzone({
             <div className="space-y-6">
                 {/* Progress */}
                 <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                        <span>Tải lên dữ liệu</span>
-                        <span>{progress}%</span>
-                    </div>
                     <Progress value={progress} className="w-full h-2" />
                 </div>
 
@@ -730,7 +659,7 @@ export default function BulkImportDropzone({
                                 <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                                     <span>{parsedData.length} sản phẩm</span>
                                     <span>•</span>
-                                    <span>{(uploadProps.files[0]?.size / 1024 / 1024).toFixed(2)} MB</span>
+                                    <span>{(uploadProps.files[0]?.size / 1024 / 1024).toFixed(3)} MB</span>
                                 </div>
                             </div>
                         </div>
@@ -791,7 +720,7 @@ export default function BulkImportDropzone({
                                                 {(() => {
                                                     const groupedProducts = groupProductsByVariants(parsedData)
 
-                                                    const displayedProducts = groupedProducts.slice(0, 50)
+                                                    const displayedProducts = groupedProducts.slice(0, BULK_IMPORT_CONSTANTS.PREVIEW_LIMIT)
 
                                                     return displayedProducts.map((product, index) => {
                                                         const hasVariants = product.variants && product.variants.length > 0
@@ -987,9 +916,9 @@ export default function BulkImportDropzone({
                                     </div>
                                 </div>
                             </div>
-                            {parsedData.length > 50 && (
+                            {parsedData.length > BULK_IMPORT_CONSTANTS.PREVIEW_LIMIT && (
                                 <div className="p-3 bg-muted/50 border-t text-center text-sm text-muted-foreground">
-                                    Hiển thị 50 sản phẩm đầu tiên. Tổng cộng: {parsedData.length} sản phẩm
+                                    Hiển thị {BULK_IMPORT_CONSTANTS.PREVIEW_LIMIT} sản phẩm đầu tiên. Tổng cộng: {parsedData.length} sản phẩm
                                 </div>
                             )}
                         </div>
