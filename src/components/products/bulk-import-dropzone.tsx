@@ -158,44 +158,23 @@ export default function BulkImportDropzone({
                             warrantyApplied: paddedRow[24] === 'Có' || paddedRow[24] === 'Yes', // Áp dụng bảo hành
                         }
 
-                        // Debug logging to see what's happening
-                        if (process.env.NODE_ENV === 'development') {
-                            console.log(`Excel Row ${rowIndex + 2}:`, {
-                                originalRow: row.slice(0, 6),
-                                paddedRow: paddedRow.slice(0, 6),
-                                productName: `"${product.name}"`,
-                                variantName: `"${product.variantName}"`,
-                                sku: product.sku,
-                                lastProductName: `"${lastProductName}"`
-                            })
-                        }
 
                         // Logic for grouping variants:
                         // If product name is empty, this is a variant of the previous product
                         if (!product.name.trim() && product.variantName?.trim() && lastProductName) {
                             product.name = lastProductName // Use the previous product name
                             product.productGroup = lastProductName
-
-                            if (process.env.NODE_ENV === 'development') {
-                                console.log(`  → Detected as variant of "${lastProductName}"`)
-                            }
                         } else if (product.name.trim()) {
                             // This is a main product, update the last product name
                             lastProductName = product.name
                             product.productGroup = product.name
 
-                            if (process.env.NODE_ENV === 'development') {
-                                console.log(`  → Detected as main product, updated lastProductName to "${lastProductName}"`)
-                            }
                         } else if (product.variantName?.trim()) {
                             // If no product name but has variant name, use variant name as product name
                             product.name = product.variantName
                             product.productGroup = product.variantName
                             lastProductName = product.variantName
 
-                            if (process.env.NODE_ENV === 'development') {
-                                console.log(`  → Using variant name as product name: "${product.variantName}"`)
-                            }
                         }
 
                         // Skip products without both name and variant name
@@ -501,37 +480,6 @@ export default function BulkImportDropzone({
             setValidationErrors(errors)
             setParsedData(products)
             setProgress(100)
-
-            // Debug: Log parsing results
-            if (process.env.NODE_ENV === 'development') {
-                const fileType = file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ? 'XLSX' : 'CSV'
-                console.log(`=== ${fileType} PARSING RESULTS ===`)
-                console.log('Total products parsed:', products.length)
-                console.log('Validation errors:', errors.length)
-
-                // Group by product name to show structure
-                const groupedForDebug = groupProductsByVariants(products)
-                console.log('Grouped products count:', groupedForDebug.length)
-
-                groupedForDebug.forEach((product, index) => {
-                    console.log(`\n--- Product ${index + 1} ---`)
-                    console.log('Name:', product.name)
-                    console.log('Variant Name:', product.variantName)
-                    console.log('SKU:', product.sku)
-                    console.log('Unit:', product.unit)
-                    console.log('Conversion Rate:', product.conversionRate)
-                    console.log('Import Price:', product.importPrice)
-                    console.log('Initial Stock:', product.initialStock)
-
-                    if (product.variants && product.variants.length > 0) {
-                        console.log('Variants:')
-                        product.variants.forEach((variant, vIndex) => {
-                            console.log(`  ${vIndex + 1}. ${variant.variantName || variant.name} (${variant.sku}) - ${variant.unit} - ${variant.conversionRate}x - ${variant.importPrice} VND - ${variant.initialStock} units`)
-                        })
-                    }
-                })
-                console.log(`=== END ${fileType} PARSING RESULTS ===`)
-            }
 
             if (errors.length === 0) {
                 toast.success(`Đã xác thực thành công ${products.length} sản phẩm`)
@@ -842,11 +790,7 @@ export default function BulkImportDropzone({
                                             <TableBody>
                                                 {(() => {
                                                     const groupedProducts = groupProductsByVariants(parsedData)
-                                                    // Debug logging - remove in production
-                                                    if (process.env.NODE_ENV === 'development') {
-                                                        console.log('Parsed data:', parsedData)
-                                                        console.log('Grouped products:', groupedProducts)
-                                                    }
+
                                                     const displayedProducts = groupedProducts.slice(0, 50)
 
                                                     return displayedProducts.map((product, index) => {
@@ -854,16 +798,6 @@ export default function BulkImportDropzone({
                                                         const productKey = `${product.name}-${index}`
                                                         const isExpanded = expandedProducts.has(productKey)
 
-                                                        // Debug logging for each product
-                                                        if (process.env.NODE_ENV === 'development') {
-                                                            console.log(`Product ${index}:`, {
-                                                                name: product.name,
-                                                                variantName: product.variantName,
-                                                                hasVariants,
-                                                                variantsCount: product.variants?.length,
-                                                                variants: product.variants?.map(v => ({ name: v.name, variantName: v.variantName, sku: v.sku }))
-                                                            })
-                                                        }
 
                                                         return (
                                                             <React.Fragment key={productKey}>
@@ -1113,20 +1047,7 @@ export default function BulkImportDropzone({
                             </>
                         )}
                     </Button>
-                    {process.env.NODE_ENV === 'development' && (
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                console.log('=== PARSED DATA ===', parsedData)
-                                console.log('=== GROUPED DATA ===', groupProductsByVariants(parsedData))
-                            }}
-                            disabled={isProcessing}
-                            className="h-11"
-                            size="lg"
-                        >
-                            Debug
-                        </Button>
-                    )}
+
                     <Button
                         variant="outline"
                         onClick={handleReset}
