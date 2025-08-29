@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEditProductStore } from '@/store/product/edit-product-store';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 
 const EditProductHeader: React.FC = () => {
     const router = useRouter();

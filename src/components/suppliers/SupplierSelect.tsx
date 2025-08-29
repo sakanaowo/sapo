@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
 import { getAllSuppliers, SupplierSelectOption } from "@/actions/supplier.action";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 
 interface SupplierSelectProps {
     value: string;

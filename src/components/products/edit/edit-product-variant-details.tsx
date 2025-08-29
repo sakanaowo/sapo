@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X } from 'lucide-react';
 import { useEditProductStore } from '@/store/product/edit-product-store';
 import { useUploadThing } from '@/lib/uploadthing';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { Switch } from '@/components/ui/switch';
 
 const EditFieldRow: React.FC<{

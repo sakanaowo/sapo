@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, Download } from 'lucide-react'
 import BulkImportDropzone from '@/components/products/bulk-import-dropzone'
-import { toast } from 'sonner'
+import { toast } from 'react-hot-toast'
 
 interface PurchaseOrder {
     purchaseOrderCode: string

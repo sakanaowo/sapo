@@ -1,7 +1,7 @@
 // src/store/sidebar-actions.ts
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { useState } from 'react';
 import { useClerk, useUser } from '@clerk/nextjs';
 

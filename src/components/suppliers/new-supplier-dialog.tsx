@@ -21,7 +21,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { createSupplier } from "@/actions/supplier.action";
 import { Supplier } from "@/lib/type/supplier.type";
 

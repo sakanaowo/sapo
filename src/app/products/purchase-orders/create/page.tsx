@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useCreateProductStore } from "@/store/product/create-product-store";
 import { useEffect, useState } from "react";
 import { addOneProduct } from "@/actions/product.action";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import ImageUpload from "@/components/ImageUpload";
 import { SupplierSelect } from "@/components/suppliers/SupplierSelect";
 
