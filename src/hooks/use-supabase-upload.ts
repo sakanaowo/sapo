@@ -49,7 +49,7 @@ type UseSupabaseUploadOptions = {
    */
   upsert?: boolean
 }
-
+// ehe
 type UseSupabaseUploadReturn = ReturnType<typeof useSupabaseUpload>
 
 const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
@@ -83,14 +83,14 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
       const validFiles = acceptedFiles
         .filter((file) => !files.find((x) => x.name === file.name))
         .map((file) => {
-          ;(file as FileWithPreview).preview = URL.createObjectURL(file)
-          ;(file as FileWithPreview).errors = []
+          ; (file as FileWithPreview).preview = URL.createObjectURL(file)
+            ; (file as FileWithPreview).errors = []
           return file as FileWithPreview
         })
 
       const invalidFiles = fileRejections.map(({ file, errors }) => {
-        ;(file as FileWithPreview).preview = URL.createObjectURL(file)
-        ;(file as FileWithPreview).errors = errors
+        ; (file as FileWithPreview).preview = URL.createObjectURL(file)
+          ; (file as FileWithPreview).errors = errors
         return file as FileWithPreview
       })
 
@@ -119,9 +119,9 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     const filesToUpload =
       filesWithErrors.length > 0
         ? [
-            ...files.filter((f) => filesWithErrors.includes(f.name)),
-            ...files.filter((f) => !successes.includes(f.name)),
-          ]
+          ...files.filter((f) => filesWithErrors.includes(f.name)),
+          ...files.filter((f) => !successes.includes(f.name)),
+        ]
         : files
 
     const responses = await Promise.all(
