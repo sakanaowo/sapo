@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { getProductsForDisplay, printInvoice } from '@/actions/POS.action';
 import { processPosPayment } from '@/actions/order.action';
 import onScan from 'onscan.js';
@@ -430,7 +430,7 @@ export function usePosStore() {
         } else {
             setSearchQuery(scannedBarcode);
             handleSearch(scannedBarcode);
-            toast.warning(`Không tìm thấy sản phẩm với mã: ${scannedBarcode}`);
+            toast.error(`Không tìm thấy sản phẩm với mã: ${scannedBarcode}`);
 
             if (searchInputRef.current) {
                 searchInputRef.current.focus();

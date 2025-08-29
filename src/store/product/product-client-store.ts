@@ -1,6 +1,6 @@
 import { useState, useTransition, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { getProducts } from '@/actions/product.action';
 
 interface Inventory {

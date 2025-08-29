@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { Toaster } from "react-hot-toast";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -36,7 +36,24 @@ export default async function RootLayout({
                   {children}
                 </main>
               </SidebarInset>
-              <Toaster />
+              <Toaster
+                position="bottom-center"
+                toastOptions={{
+                  duration: 3000,
+                  removeDelay: 1000,
+                  style: {
+                    borderRadius: "10px",
+                    background: "var(--popover)",
+                    border: "1px solid green",
+                  },
+                  error: {
+                    style: {
+                      borderRadius: "10px",
+                      border: "1px solid var(--destructive)",
+                    },
+                  }
+                }}
+              />
             </SidebarProvider>
           </ThemeProvider>
         </body>

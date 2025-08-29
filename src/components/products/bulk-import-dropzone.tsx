@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertCircle, CheckCircle, FileSpreadsheet, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from 'react-hot-toast'
 import * as XLSX from 'xlsx'
 import { SupplierSelect } from '@/components/suppliers/SupplierSelect'
 import {
@@ -439,7 +439,7 @@ export default function BulkImportDropzone({
             if (errors.length === 0) {
                 toast.success(BULK_IMPORT_CONSTANTS.SUCCESS_MESSAGES.VALIDATION_SUCCESS.replace('{count}', products.length.toString()))
             } else {
-                toast.warning(BULK_IMPORT_CONSTANTS.SUCCESS_MESSAGES.VALIDATION_WITH_ERRORS.replace('{count}', errors.length.toString()))
+                toast.error(BULK_IMPORT_CONSTANTS.SUCCESS_MESSAGES.VALIDATION_WITH_ERRORS.replace('{count}', errors.length.toString()))
             }
 
         } catch (error) {

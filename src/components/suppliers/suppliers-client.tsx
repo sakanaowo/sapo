@@ -38,7 +38,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, Search, Edit, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { getSuppliers, deleteSupplier } from "@/actions/supplier.action";
 import { SupplierWithDetails } from "@/lib/type/supplier.type";
 import NewSupplierDialog from "@/components/suppliers/new-supplier-dialog";

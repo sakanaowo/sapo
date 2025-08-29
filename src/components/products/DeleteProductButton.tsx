@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '../ui/button'
 import { Trash2, AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react'
 import { checkProductDeletability, deleteProductById, forceDeleteProductById, flushAllCache } from '@/actions/product.action'
-import { toast } from 'sonner'
+import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
 interface ProductDetailHeaderProps {
@@ -97,7 +97,7 @@ function DeleteProductButton(product: ProductDetailHeaderProps) {
                 toast.success(res.message);
                 if (forceDelete && res.warnings && res.warnings.length > 0) {
                     res.warnings.forEach((warning: string) => {
-                        toast.warning(warning);
+                        toast.error(warning);
                     });
                 }
                 router.push('/products');

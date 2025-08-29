@@ -12,7 +12,6 @@ import Image from "next/image";
 
 
 import { usePosStore } from "@/store/pos/POS-store";
-import { toast } from "sonner";
 
 export default function POSPage() {
 
@@ -196,32 +195,6 @@ export default function POSPage() {
                         </TabsList>
                     </Tabs>
                     {/* Test */}
-
-                    {/* Test Toast Buttons */}
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toast.success("Thành công! Toast hiện ở giữa dưới màn hình với kích thước lớn hơn")}
-                        >
-                            Test Success Toast
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toast.error("Lỗi! Toast hiện ở giữa dưới màn hình với kích thước lớn hơn")}
-                        >
-                            Test Error Toast
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toast.info("Thông tin! Toast hiện ở giữa dưới màn hình với kích thước lớn hơn")}
-                        >
-                            Test Info Toast
-                        </Button>
-                    </div>
-
                 </div>
             </div>
 
