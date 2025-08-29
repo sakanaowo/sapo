@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, X, Plus } from "lucide-react";
 import OnCart from "@/components/POS/onCart";
 import Image from "next/image";
 
 
 import { usePosStore } from "@/store/pos/POS-store";
+import { toast } from "sonner";
 
 export default function POSPage() {
 
@@ -141,6 +143,7 @@ export default function POSPage() {
             {/* Header */}
             <div className="bg-card border-b shadow-sm p-4">
                 <div className="flex items-center gap-4">
+                    {/* Search Input */}
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
@@ -192,30 +195,79 @@ export default function POSPage() {
                             </Button>
                         </TabsList>
                     </Tabs>
+                    {/* Test */}
+
+                    {/* Test Toast Buttons */}
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toast.success("Thành công! Toast hiện ở giữa dưới màn hình với kích thước lớn hơn")}
+                        >
+                            Test Success Toast
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toast.error("Lỗi! Toast hiện ở giữa dưới màn hình với kích thước lớn hơn")}
+                        >
+                            Test Error Toast
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toast.info("Thông tin! Toast hiện ở giữa dưới màn hình với kích thước lớn hơn")}
+                        >
+                            Test Info Toast
+                        </Button>
+                    </div>
+
                 </div>
             </div>
 
             {/* Main Content */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Product List Area */}
-                <div className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-120px)] scrollbar-hide">
+                <div className="flex-1 p-4 overflow-y-auto max-h-[calc(100vh-120px)] scrollbar-hide">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         {orders.map((order) => (
-                            <TabsContent key={order.id} value={order.name} className="mt-0">
+                            <TabsContent key={order.id} value={order.name} className="mt-0 h-full">
                                 {order.products.length === 0 ? (
                                     <EmptyOrder />
                                 ) : (
-                                    <div className="space-y-4">
-                                        {order.products.map((product) => (
-                                            <OnCart
-                                                key={product.id}
-                                                product={product}
-                                                onUpdateQuantity={updateProductQuantity}
-                                                onUpdateUnit={updateProductUnit}
-                                                onRemoveProduct={(productId) => removeProductFromOrder(order.id, productId)}
-                                            />
-                                        ))}
-                                    </div>
+                                    <Card className="h-fit">
+                                        <CardContent className="p-0">
+                                            <div className="overflow-x-auto">
+                                                <Table className="w-full">
+                                                    <TableHeader>
+                                                        <TableRow className="bg-muted/30 border-b-2">
+                                                            <TableHead className="w-[60px] text-center font-semibold py-3">STT</TableHead>
+                                                            <TableHead className="w-[80px] text-center font-semibold py-3">Ảnh</TableHead>
+                                                            <TableHead className="w-[120px] font-semibold py-3">SKU</TableHead>
+                                                            <TableHead className="min-w-[200px] font-semibold py-3">Tên sản phẩm</TableHead>
+                                                            <TableHead className="w-[100px] text-center font-semibold py-3">Đơn vị</TableHead>
+                                                            <TableHead className="w-[140px] text-center font-semibold py-3">Số lượng</TableHead>
+                                                            <TableHead className="w-[100px] text-right font-semibold py-3">Đơn giá</TableHead>
+                                                            <TableHead className="w-[120px] text-right font-semibold py-3">Thành tiền</TableHead>
+                                                            <TableHead className="w-[80px] text-center font-semibold py-3">Thao tác</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {order.products.map((product, index) => (
+                                                            <OnCart
+                                                                key={product.id}
+                                                                product={product}
+                                                                index={index + 1}
+                                                                onUpdateQuantity={updateProductQuantity}
+                                                                onUpdateUnit={updateProductUnit}
+                                                                onRemoveProduct={(productId) => removeProductFromOrder(order.id, productId)}
+                                                            />
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 )}
                             </TabsContent>
                         ))}
