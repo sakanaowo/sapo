@@ -349,9 +349,99 @@ export function usePosStore() {
         );
     }, [currentOrder]);
 
-    const updateProductUnit = useCallback((productId: string, unit: string) => {
-        console.log('Update unit:', productId, unit);
-    }, []);
+    const updateProductUnit = useCallback((currentVariantId: string, newVariantId: string) => {
+        if (!currentOrder) return;
+
+        // Tìm variant mới từ danh sách products
+        const newVariant = products.find(product =>
+            product.variants.some(variant => variant.variantId === newVariantId)
+        )?.variants.find(variant => variant.variantId === newVariantId);
+
+        if (!newVariant) {
+            toast.error("Không tìm thấy variant mới");
+            return;
+        }
+
+        // Tìm sản phẩm hiện tại trong cart
+        const currentProduct = currentOrder.products.find(p => p.id === currentVariantId);
+        if (!currentProduct) return;
+
+        // Kiểm tra xem variant mới đã có trong cart chưa
+        const existingProduct = currentOrder.products.find(p => p.id === newVariantId);
+
+        if (existingProduct) {
+            // Nếu variant mới đã có, cộng quantity và xóa variant cũ
+            setOrders(prev =>
+                prev.map(order =>
+                    order.id === currentOrder.id
+                        ? {
+                            ...order,
+                            products: order.products
+                                .filter(p => p.id !== currentVariantId)
+                                .map(p =>
+                                    p.id === newVariantId
+                                        ? {
+                                            ...p,
+                                            quantity: p.quantity + currentProduct.quantity,
+                                            amount: p.price * (p.quantity + currentProduct.quantity)
+                                        }
+                                        : p
+                                ),
+                            total: order.products
+                                .filter(p => p.id !== currentVariantId)
+                                .map(p =>
+                                    p.id === newVariantId
+                                        ? {
+                                            ...p,
+                                            quantity: p.quantity + currentProduct.quantity,
+                                            amount: p.price * (p.quantity + currentProduct.quantity)
+                                        }
+                                        : p
+                                )
+                                .reduce((sum, p) => sum + p.amount, 0)
+                        }
+                        : order
+                )
+            );
+            // toast.success(`Đã chuyển sang ${newVariant.variantName} và cộng số lượng`);
+        } else {
+            // Nếu variant mới chưa có, cập nhật variant hiện tại
+            setOrders(prev =>
+                prev.map(order =>
+                    order.id === currentOrder.id
+                        ? {
+                            ...order,
+                            products: order.products.map(p =>
+                                p.id === currentVariantId
+                                    ? {
+                                        ...p,
+                                        id: newVariant.variantId,
+                                        productId: newVariant.variantId,
+                                        name: newVariant.variantName,
+                                        SKU: newVariant.SKU,
+                                        unit: [newVariant.unit],
+                                        price: newVariant.price,
+                                        image: newVariant.image || p.image,
+                                        amount: newVariant.price * p.quantity
+                                    }
+                                    : p
+                            ),
+                            total: order.products.map(p =>
+                                p.id === currentVariantId
+                                    ? {
+                                        ...p,
+                                        price: newVariant.price,
+                                        amount: newVariant.price * p.quantity
+                                    }
+                                    : p
+                            ).reduce((sum, p) => sum + p.amount, 0)
+                        }
+                        : order
+                )
+            );
+            // toast.success(`Đã chuyển sang ${newVariant.variantName}`);
+        }
+    }, [currentOrder, products]);
 
     // Payment and printing
     const handlePayment = useCallback(async (orderId: string) => {

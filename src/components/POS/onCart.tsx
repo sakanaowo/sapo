@@ -10,6 +10,7 @@ import Image from "next/image";
 
 type Product = {
     id: string;
+    productId: string;
     image: string;
     name: string;
     SKU: string;
@@ -19,17 +20,29 @@ type Product = {
     amount: number;
 }
 
+type Variant = {
+    variantId: string;
+    variantName: string;
+    unit: string;
+    price: number;
+    barcode?: string;
+    SKU: string;
+    image?: string | null;
+}
+
 interface OnCartProps {
     product: Product;
     index: number;
+    availableVariants?: Variant[]; // Các variant có sẵn của sản phẩm này
     onUpdateQuantity: (productId: string, quantity: number) => void;
-    onUpdateUnit: (productId: string, unit: string) => void;
+    onUpdateUnit: (currentVariantId: string, newVariantId: string) => void;
     onRemoveProduct: (productId: string) => void;
 }
 
 export default function OnCart({
     product,
     index,
+    availableVariants = [],
     onUpdateQuantity,
     onUpdateUnit,
     onRemoveProduct
@@ -103,24 +116,40 @@ export default function OnCart({
                 </p>
             </TableCell>
 
-            {/* Đơn vị tính */}
+            {/* Variant/Đơn vị tính */}
             <TableCell className="py-4">
                 <div className="flex justify-center">
-                    <Select
-                        value={product.unit[0]}
-                        onValueChange={(value) => onUpdateUnit(product.id, value)}
-                    >
-                        <SelectTrigger className="h-9 w-20 text-sm">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {product.unit.map((unit) => (
-                                <SelectItem key={unit} value={unit}>
-                                    {unit}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {availableVariants.length > 1 ? (
+                        // Nếu có nhiều variant, hiển thị dropdown để chọn variant
+                        <Select
+                            value={product.id}
+                            onValueChange={(variantId) => onUpdateUnit(product.id, variantId)}
+                        >
+                            <SelectTrigger className="h-9 min-w-24 text-sm">
+                                <SelectValue>
+                                    <span className="truncate">
+                                        {availableVariants.find(v => v.variantId === product.id)?.unit || product.unit[0]}
+                                    </span>
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableVariants.map((variant) => (
+                                    <SelectItem key={variant.variantId} value={variant.variantId}>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{variant.unit}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        // Nếu chỉ có 1 variant, hiển thị đơn vị cố định (không thể thay đổi)
+                        <div className="h-9 px-3 py-2 bg-muted rounded-md flex items-center">
+                            <span className="text-sm text-muted-foreground">
+                                {product.unit[0]}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </TableCell>
 

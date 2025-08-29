@@ -11,9 +11,18 @@ import OnCart from "@/components/POS/onCart";
 import Image from "next/image";
 
 
-import { usePosStore } from "@/store/pos/POS-store";
+import { usePosStore, type CartProduct } from "@/store/pos/POS-store";
 
 export default function POSPage() {
+
+    // Helper function để tìm các variant có sẵn của sản phẩm
+    const getAvailableVariants = (cartProduct: CartProduct) => {
+        // Tìm sản phẩm gốc dựa trên một variant trong cart
+        const sourceProduct = products.find(product =>
+            product.variants.some(variant => variant.variantId === cartProduct.id)
+        );
+        return sourceProduct ? sourceProduct.variants : [];
+    };
 
     const SearchDropdown = () => {
         if (!showSearchResults || !isManualSearch) return null;
@@ -111,6 +120,7 @@ export default function POSPage() {
     const {
         // State
         searchQuery,
+        products,
         filteredProducts,
         isLoading,
         showSearchResults,
@@ -231,6 +241,7 @@ export default function POSPage() {
                                                                 key={product.id}
                                                                 product={product}
                                                                 index={index + 1}
+                                                                availableVariants={getAvailableVariants(product)}
                                                                 onUpdateQuantity={updateProductQuantity}
                                                                 onUpdateUnit={updateProductUnit}
                                                                 onRemoveProduct={(productId) => removeProductFromOrder(order.id, productId)}
