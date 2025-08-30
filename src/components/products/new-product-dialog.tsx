@@ -8,7 +8,7 @@ import {
     DialogTitle,
     DialogTrigger
 } from "@/components/ui/dialog";
-import { Plus, Upload, Edit, FileSpreadsheet } from "lucide-react";
+import { Plus, Edit, FileUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -36,17 +36,7 @@ export default function AddProductDialog({
 
     const handleBulkImport = () => {
         handleOpenChange(false);
-        // router.push('/products/import');
-        // TODO: Implement bulk import logic
-        // This is a placeholder for the actual import functionality
-    };
-
-    const handleDownloadTemplate = () => {
-        // Logic để download template Excel/CSV
-        const link = document.createElement('a');
-        link.href = '/templates/import-goods-template.xlsx';
-        link.download = 'import-goods-template.xlsx';
-        link.click();
+        router.push('/products/import');
     };
 
     return (
@@ -74,24 +64,10 @@ export default function AddProductDialog({
                             variant="outline"
                             className="w-full h-20 flex-col gap-2 border-dashed border-2 hover:bg-muted/50"
                         >
-                            <Upload className="h-6 w-6 text-blue-600" />
+                            <FileUp className="h-6 w-6 text-blue-600" />
                             <div className="text-center">
-                                <div className="font-medium">Import danh sách sản phẩm</div>
-                                <div className="text-xs text-muted-foreground">
-                                    Kéo thả file Excel/CSV hoặc chọn file
-                                </div>
+                                <div className="font-medium">Nhập nhiều sản phẩm</div>
                             </div>
-                        </Button>
-
-                        {/* Template download */}
-                        <Button
-                            onClick={handleDownloadTemplate}
-                            variant="default"
-                            size="sm"
-                            className="w-full gap-2 text-xs bg-blue-700"
-                        >
-                            <FileSpreadsheet className="h-3 w-3" />
-                            Tải xuống mẫu import
                         </Button>
                     </div>
 
@@ -116,15 +92,8 @@ export default function AddProductDialog({
                         <Edit className="h-6 w-6 text-green-600" />
                         <div className="text-center">
                             <div className="font-medium">Tạo sản phẩm thủ công</div>
-                            <div className="text-xs text-muted-foreground">
-                                Điền thông tin từng sản phẩm
-                            </div>
                         </div>
                     </Button>
-                </div>
-
-                <div className="text-xs text-muted-foreground text-center mt-2">
-                    💡 Tip: Sử dụng import để thêm nhiều sản phẩm cùng lúc
                 </div>
             </DialogContent>
         </Dialog>

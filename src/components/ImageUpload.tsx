@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useUploadThing } from "@/lib/uploadthing";
 
 interface CustomImageUploadProps {

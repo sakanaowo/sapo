@@ -12,6 +12,9 @@ import { ChevronLeft, ChevronRight, Plus, Search, MoreHorizontal, Package, Filte
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { usePurchaseOrderClientStoreWithInit, type PurchaseOrdersData } from "@/store/product/purchase-order-client-store";
 import Link from "next/link";
+import { importMultiplePurchaseOrders, updatePurchaseOrderStatus } from "@/actions/purchase-order.action";
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 // Helper function for currency formatting
 const formatCurrency = (amount: number) => {
@@ -65,8 +68,10 @@ export default function PurchaseOrdersClient({
         initialError
     });
 
+    const router = useRouter();
     // State for managing selected items
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+
 
     // Handlers for checkbox selection
     const handleSelectAll = (checked: boolean) => {
@@ -142,6 +147,36 @@ export default function PurchaseOrdersClient({
             minute: '2-digit'
         });
     };
+
+    async function confirmOneOrder(purchaseOrderId: string) {
+        const result = await updatePurchaseOrderStatus(
+            purchaseOrderId,
+            'COMPLETED',
+            'IMPORTED'
+        );
+
+        if (result.success) {
+            toast.success('Đơn hàng đã được xác nhận và nhập kho thành công! Tồn kho đã được cập nhật.');
+            router.refresh();
+        } else {
+            toast.error(result.message || 'Có lỗi xảy ra khi xử lý đơn hàng');
+        }
+    }
+
+    async function handleImportMultiple() {
+        if (selectedItems.size === 0) {
+            toast.error('Vui lòng chọn ít nhất một đơn hàng để nhập kho');
+            return;
+        }
+
+        const result = await importMultiplePurchaseOrders(Array.from(selectedItems));
+        if (result.success) {
+            toast.success('Đã nhập kho thành công!');
+            router.refresh();
+        } else {
+            toast.error(result.message || 'Có lỗi xảy ra khi nhập kho');
+        }
+    }
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -265,15 +300,12 @@ export default function PurchaseOrdersClient({
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem>
-                                                            {/* TODO: implement import multiple
-                                                                - checking dialog for import multiple
-                                                            */}
+                                                        <DropdownMenuItem onClick={handleImportMultiple}>
                                                             Nhập nhiều
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem>
                                                             {/* TODO: implement delete selected items */}
-                                                            Xóa đã chọn
+                                                            Hủy nhiều
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -344,7 +376,12 @@ export default function PurchaseOrdersClient({
                                                             Xem chi tiết
                                                         </DropdownMenuItem>
                                                         {order.status === 'PENDING' && (
-                                                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                                                            <DropdownMenuItem
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    confirmOneOrder(order.purchaseOrderId);
+                                                                }}
+                                                            >
                                                                 Xác nhận đơn
                                                             </DropdownMenuItem>
                                                         )}
