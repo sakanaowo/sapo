@@ -5,7 +5,9 @@ const prismaClientSingleton = () => {
         log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
         datasources: {
             db: {
-                url: process.env.DATABASE_URL
+                url: process.env.NODE_ENV === 'development'
+                    ? process.env.DEVELOP_DATABASE_URL
+                    : process.env.DATABASE_URL
             }
         }
     });

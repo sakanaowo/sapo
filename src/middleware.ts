@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const isPublicRoute = createRouteMatcher([
   '/login(.*)',
   '/api/webhook(.*)',
-  '/',
+  ...(process.env.NODE_ENV === 'development' ? ['/api/debug(.*)'] : []),
   '/api/uploadthing(.*)'
 ]);
 

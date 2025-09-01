@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import {
-    BadgeCheck,
     Check,
     ChevronsUpDown,
+    CodeXml,
     LogIn,
     LogOut,
     Monitor,
@@ -191,14 +191,14 @@ export function NavUser() {
 
                         <DropdownMenuSeparator />
 
-                        {isAuthenticated() && (
+                        {process.env.NODE_ENV === 'development' && (
                             <DropdownMenuGroup>
                                 <DropdownMenuItem
                                     onClick={handleAccountClick}
                                     disabled={isNavigating || isLoading}
                                 >
-                                    <BadgeCheck className="h-4 w-4" />
-                                    Account
+                                    <CodeXml className="h-4 w-4" />
+                                    On Development
                                 </DropdownMenuItem>
                             </DropdownMenuGroup>
                         )}
