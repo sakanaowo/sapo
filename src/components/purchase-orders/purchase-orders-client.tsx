@@ -190,7 +190,7 @@ export default function PurchaseOrdersClient({
                             {data.pagination.total} đơn
                         </Badge>
                     </div>
-                    <Link href="/products/purchase-orders/create">
+                    <Link href="/products/purchase-orders/import">
                         <Button size="sm">
                             <Plus className="h-4 w-4 mr-2" />
                             Tạo đơn nhập
