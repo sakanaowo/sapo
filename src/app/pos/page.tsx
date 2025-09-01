@@ -55,15 +55,15 @@ export default function POSPage() {
                         product.variants.map((variant) => (
                             <div
                                 key={variant.variantId}
-                                className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg cursor-pointer transition-colors"
+                                className="flex items-center gap-3 p-3 hover:bg-primary/5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border border-transparent hover:border-primary/20"
                                 onClick={() => addProductToOrder(variant, product.name, product.image, false)}
                             >
                                 <div className="w-12 h-12 flex-shrink-0">
-                                    <div className="w-full h-full bg-muted rounded-lg overflow-hidden">
+                                    <div className="w-full h-full bg-muted rounded-lg overflow-hidden ring-1 ring-border/50">
                                         <Image
                                             src={variant.image || product.image || "/not-found.png"}
                                             alt={variant.variantName}
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
                                             width={48}
                                             height={48}
                                         />
@@ -71,24 +71,24 @@ export default function POSPage() {
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium line-clamp-1" title={`${variant.variantName}`}>
+                                    <p className="text-sm font-medium line-clamp-1 text-foreground" title={`${variant.variantName}`}>
                                         {variant.variantName}
                                     </p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span>SKU: {variant.SKU}</span>
+                                        <span className="bg-muted/70 px-1.5 py-0.5 rounded text-xs font-mono">SKU: {variant.SKU}</span>
                                         <span>•</span>
-                                        <span>{variant.unit}</span>
+                                        <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-medium">{variant.unit}</span>
                                         {variant.barcode && (
                                             <>
                                                 <span>•</span>
-                                                <span>{variant.barcode}</span>
+                                                <span className="font-mono">{variant.barcode}</span>
                                             </>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="flex-shrink-0">
-                                    <p className="text-sm font-bold text-primary">
+                                    <p className="text-sm font-bold text-primary bg-primary/5 px-2 py-1 rounded">
                                         {variant.price.toLocaleString('vi-VN')}₫
                                     </p>
                                 </div>
@@ -218,21 +218,21 @@ export default function POSPage() {
                                 {order.products.length === 0 ? (
                                     <EmptyOrder />
                                 ) : (
-                                    <Card className="h-fit">
+                                    <Card className="h-fit shadow-sm border-0 bg-gradient-to-br from-card to-card/50">
                                         <CardContent className="p-0">
                                             <div className="overflow-x-auto">
                                                 <Table className="w-full">
                                                     <TableHeader>
-                                                        <TableRow className="bg-muted/30 border-b-2">
-                                                            <TableHead className="w-[60px] text-center font-semibold py-3">STT</TableHead>
-                                                            <TableHead className="w-[80px] text-center font-semibold py-3">Ảnh</TableHead>
-                                                            <TableHead className="w-[120px] font-semibold py-3">SKU</TableHead>
-                                                            <TableHead className="min-w-[200px] font-semibold py-3">Tên sản phẩm</TableHead>
-                                                            <TableHead className="w-[100px] text-center font-semibold py-3">Đơn vị</TableHead>
-                                                            <TableHead className="w-[140px] text-center font-semibold py-3">Số lượng</TableHead>
-                                                            <TableHead className="w-[100px] text-right font-semibold py-3">Đơn giá</TableHead>
-                                                            <TableHead className="w-[120px] text-right font-semibold py-3">Thành tiền</TableHead>
-                                                            <TableHead className="w-[80px] text-center font-semibold py-3">Thao tác</TableHead>
+                                                        <TableRow className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2 border-primary/20 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/15">
+                                                            <TableHead className="w-[60px] text-center font-semibold py-4 text-primary">STT</TableHead>
+                                                            <TableHead className="w-[80px] text-center font-semibold py-4 text-primary">Ảnh</TableHead>
+                                                            <TableHead className="w-[120px] font-semibold py-4 text-primary">SKU</TableHead>
+                                                            <TableHead className="min-w-[200px] font-semibold py-4 text-primary">Tên sản phẩm</TableHead>
+                                                            <TableHead className="w-[100px] text-center font-semibold py-4 text-primary">Đơn vị</TableHead>
+                                                            <TableHead className="w-[140px] text-center font-semibold py-4 text-primary">Số lượng</TableHead>
+                                                            <TableHead className="w-[100px] text-right font-semibold py-4 text-primary">Đơn giá</TableHead>
+                                                            <TableHead className="w-[120px] text-right font-semibold py-4 text-primary">Thành tiền</TableHead>
+                                                            <TableHead className="w-[80px] text-center font-semibold py-4 text-primary">Thao tác</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
@@ -262,27 +262,31 @@ export default function POSPage() {
                 <div className="w-80 bg-card border-l shadow-sm flex flex-col">
                     <div className="flex-1 p-6">
                         <div className="space-y-4">
-                            <div className="bg-muted/50 rounded-lg p-4">
+                            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-4 border border-primary/10">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-sm text-muted-foreground">Số lượng sản phẩm:</span>
-                                    <span className="font-medium">{currentOrder?.products.length || 0}</span>
+                                    <span className="font-medium bg-primary/10 text-primary px-2 py-1 rounded-full text-sm">
+                                        {currentOrder?.products.length || 0}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-sm text-muted-foreground">Tạm tính:</span>
                                     <span className="font-medium">{currentOrder?.total.toLocaleString('vi-VN')}₫</span>
                                 </div>
-                                <hr className="my-3 border-border" />
+                                <hr className="my-3 border-primary/20" />
                                 <div className="flex justify-between items-center">
                                     <span className="text-base font-semibold">Tổng cộng:</span>
-                                    <span className="text-xl font-bold text-primary">{currentOrder?.total.toLocaleString('vi-VN')}₫</span>
+                                    <span className="text-xl font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
+                                        {currentOrder?.total.toLocaleString('vi-VN')}₫
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-6 border-t bg-muted/30">
+                    <div className="p-6 border-t bg-gradient-to-r from-muted/30 to-muted/50">
                         <Button
-                            className="w-full font-medium py-3 text-lg"
+                            className="w-full font-medium py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
                             size="lg"
                             onClick={() => currentOrder && handlePayment(currentOrder.id)}
                             disabled={!currentOrder?.products.length}
@@ -295,7 +299,7 @@ export default function POSPage() {
                             </Button> */}
                             <Button
                                 variant="outline"
-                                className="flex-1"
+                                className="flex-1 hover:bg-primary/5 hover:border-primary/50 transition-all duration-200"
                                 size="sm"
                                 onClick={() => currentOrder && handlePrintInvoice(currentOrder.id)}
                                 disabled={!currentOrder?.products.length}
